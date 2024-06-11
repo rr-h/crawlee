@@ -1,0 +1,4116 @@
+MEMORY-STORAGE.TXT
+
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "@crawlee/memory-storage",
+    "version": "3.10.4",
+    "description": "A simple in-memory storage implementation of the Apify API",
+    "engines": {
+        "node": ">= 16"
+    },
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "keywords": [
+        "apify",
+        "api",
+        "memory"
+    ],
+    "author": {
+        "name": "Apify",
+        "email": "support@apify.com",
+        "url": "https://apify.com"
+    },
+    "contributors": [
+        "Vlad Frangu <kingdgrizzle@gmail.com>"
+    ],
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/apify/crawlee"
+    },
+    "bugs": {
+        "url": "https://github.com/apify/crawlee/issues"
+    },
+    "homepage": "https://crawlee.dev",
+    "scripts": {
+        "build": "yarn clean && yarn compile && yarn copy",
+        "clean": "rimraf ./dist",
+        "compile": "tsc -p tsconfig.build.json && gen-esm-wrapper ./dist/index.js ./dist/index.mjs",
+        "copy": "tsx ../../scripts/copy.ts"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@apify/log": "^2.4.0",
+        "@crawlee/types": "3.10.4",
+        "@sapphire/async-queue": "^1.5.0",
+        "@sapphire/shapeshift": "^3.0.0",
+        "content-type": "^1.0.4",
+        "fs-extra": "^11.0.0",
+        "json5": "^2.2.3",
+        "mime-types": "^2.1.35",
+        "proper-lockfile": "^4.1.2",
+        "tslib": "^2.4.0"
+    }
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "../../tsconfig.json",
+	"include": ["src/**/*"]
+}
+
+
+
+TSCONFIG.BUILD.JSON
+
+{
+	"extends": "../../tsconfig.build.json",
+	"compilerOptions": {
+		"outDir": "./dist"
+	},
+	"include": ["src/**/*"]
+}
+
+
+
+.NPMIGNORE
+
+node_modules
+src
+test
+coverage
+tsconfig.*
+
+
+
+MEMORY-STORAGE.TS
+
+/* eslint-disable import/no-duplicates */
+import { rm, readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import type * as storage from '@crawlee/types';
+import type { Dictionary } from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+import { ensureDirSync, move, moveSync, pathExistsSync } from 'fs-extra';
+
+import { promiseMap } from './background-handler/index';
+import { DatasetClient } from './resource-clients/dataset';
+import { DatasetCollectionClient } from './resource-clients/dataset-collection';
+import { KeyValueStoreClient } from './resource-clients/key-value-store';
+import { KeyValueStoreCollectionClient } from './resource-clients/key-value-store-collection';
+import { RequestQueueClient } from './resource-clients/request-queue';
+import { RequestQueueCollectionClient } from './resource-clients/request-queue-collection';
+
+export interface MemoryStorageOptions {
+    /**
+     * Path to directory where the data will also be saved.
+     * @default process.env.CRAWLEE_STORAGE_DIR ?? './storage'
+     */
+    localDataDirectory?: string;
+
+    /**
+     * Whether to also write optional metadata files when storing to disk.
+     * @default process.env.DEBUG?.includes('*') ?? process.env.DEBUG?.includes('crawlee:memory-storage') ?? false
+     */
+    writeMetadata?: boolean;
+
+    /**
+     * Whether the memory storage should also write its stored content to the disk.
+     *
+     * You can also disable this by setting the `CRAWLEE_PERSIST_STORAGE` environment variable to `false`.
+     * @default true
+     */
+    persistStorage?: boolean;
+}
+
+export class MemoryStorage implements storage.StorageClient {
+    readonly localDataDirectory: string;
+    readonly datasetsDirectory: string;
+    readonly keyValueStoresDirectory: string;
+    readonly requestQueuesDirectory: string;
+    readonly writeMetadata: boolean;
+    readonly persistStorage: boolean;
+
+    readonly keyValueStoresHandled: KeyValueStoreClient[] = [];
+    readonly datasetClientsHandled: DatasetClient[] = [];
+    readonly requestQueuesHandled: RequestQueueClient[] = [];
+
+    constructor(options: MemoryStorageOptions = {}) {
+        s.object({
+            localDataDirectory: s.string.optional,
+            writeMetadata: s.boolean.optional,
+            persistStorage: s.boolean.optional,
+        }).parse(options);
+
+        // v3.0.0 used `crawlee_storage` as the default, we changed this in v3.0.1 to just `storage`,
+        // this function handles it without making BC breaks - it respects existing `crawlee_storage`
+        // directories, and uses the `storage` only if it's not there.
+        const defaultStorageDir = () => {
+            if (pathExistsSync(resolve('./crawlee_storage'))) {
+                return './crawlee_storage';
+            }
+
+            return './storage';
+        };
+
+        this.localDataDirectory = options.localDataDirectory ?? process.env.CRAWLEE_STORAGE_DIR ?? defaultStorageDir();
+        this.datasetsDirectory = resolve(this.localDataDirectory, 'datasets');
+        this.keyValueStoresDirectory = resolve(this.localDataDirectory, 'key_value_stores');
+        this.requestQueuesDirectory = resolve(this.localDataDirectory, 'request_queues');
+        this.writeMetadata =
+            options.writeMetadata ??
+            process.env.DEBUG?.includes('*') ??
+            process.env.DEBUG?.includes('crawlee:memory-storage') ??
+            false;
+        this.persistStorage =
+            options.persistStorage ??
+            (process.env.CRAWLEE_PERSIST_STORAGE
+                ? !['false', '0', ''].includes(process.env.CRAWLEE_PERSIST_STORAGE!)
+                : true);
+    }
+
+    datasets(): storage.DatasetCollectionClient {
+        return new DatasetCollectionClient({
+            baseStorageDirectory: this.datasetsDirectory,
+            client: this,
+        });
+    }
+
+    dataset<Data extends Dictionary = Dictionary>(id: string): storage.DatasetClient<Data> {
+        s.string.parse(id);
+
+        return new DatasetClient({ id, baseStorageDirectory: this.datasetsDirectory, client: this });
+    }
+
+    keyValueStores(): storage.KeyValueStoreCollectionClient {
+        return new KeyValueStoreCollectionClient({
+            baseStorageDirectory: this.keyValueStoresDirectory,
+            client: this,
+        });
+    }
+
+    keyValueStore(id: string): storage.KeyValueStoreClient {
+        s.string.parse(id);
+
+        return new KeyValueStoreClient({ id, baseStorageDirectory: this.keyValueStoresDirectory, client: this });
+    }
+
+    requestQueues(): storage.RequestQueueCollectionClient {
+        return new RequestQueueCollectionClient({
+            baseStorageDirectory: this.requestQueuesDirectory,
+            client: this,
+        });
+    }
+
+    requestQueue(id: string, options: storage.RequestQueueOptions = {}): storage.RequestQueueClient {
+        s.string.parse(id);
+        s.object({
+            clientKey: s.string.optional,
+            timeoutSecs: s.number.optional,
+        }).parse(options);
+
+        return new RequestQueueClient({
+            id,
+            baseStorageDirectory: this.requestQueuesDirectory,
+            client: this,
+            ...options,
+        });
+    }
+
+    async setStatusMessage(message: string, options: storage.SetStatusMessageOptions = {}): Promise<void> {
+        s.string.parse(message);
+        s.object({
+            isStatusMessageTerminal: s.boolean.optional,
+        }).parse(options);
+
+        return Promise.resolve();
+    }
+
+    /**
+     * Cleans up the default storage directories before the run starts:
+     *  - local directory containing the default dataset;
+     *  - all records from the default key-value store in the local directory, except for the "INPUT" key;
+     *  - local directory containing the default request queue.
+     */
+    async purge(): Promise<void> {
+        // Key-value stores
+        const keyValueStores = await readdir(this.keyValueStoresDirectory).catch(() => []);
+        const keyValueStorePromises: Promise<void>[] = [];
+
+        for (const keyValueStoreFolder of keyValueStores) {
+            if (keyValueStoreFolder.startsWith('__CRAWLEE_TEMPORARY') || keyValueStoreFolder.startsWith('__OLD')) {
+                keyValueStorePromises.push(
+                    (await this.batchRemoveFiles(resolve(this.keyValueStoresDirectory, keyValueStoreFolder)))(),
+                );
+            } else if (keyValueStoreFolder === 'default') {
+                keyValueStorePromises.push(
+                    this.handleDefaultKeyValueStore(resolve(this.keyValueStoresDirectory, keyValueStoreFolder))(),
+                );
+            }
+        }
+
+        void Promise.allSettled(keyValueStorePromises);
+
+        // Datasets
+        const datasets = await readdir(this.datasetsDirectory).catch(() => []);
+        const datasetPromises: Promise<void>[] = [];
+
+        for (const datasetFolder of datasets) {
+            if (datasetFolder === 'default' || datasetFolder.startsWith('__CRAWLEE_TEMPORARY')) {
+                datasetPromises.push((await this.batchRemoveFiles(resolve(this.datasetsDirectory, datasetFolder)))());
+            }
+        }
+
+        void Promise.allSettled(datasetPromises);
+
+        // Request queues
+        const requestQueues = await readdir(this.requestQueuesDirectory).catch(() => []);
+        const requestQueuePromises: Promise<void>[] = [];
+
+        for (const requestQueueFolder of requestQueues) {
+            if (requestQueueFolder === 'default' || requestQueueFolder.startsWith('__CRAWLEE_TEMPORARY')) {
+                requestQueuePromises.push(
+                    (await this.batchRemoveFiles(resolve(this.requestQueuesDirectory, requestQueueFolder)))(),
+                );
+            }
+        }
+
+        void Promise.allSettled(requestQueuePromises);
+    }
+
+    /**
+     * This method should be called at the end of the process, to ensure all data is saved.
+     */
+    async teardown(): Promise<void> {
+        const promises = [...promiseMap.values()].map(async ({ promise }) => promise);
+
+        await Promise.all(promises);
+    }
+
+    private handleDefaultKeyValueStore(folder: string): () => Promise<void> {
+        const storagePathExists = pathExistsSync(folder);
+        const temporaryPath = resolve(folder, '../__CRAWLEE_MIGRATING_KEY_VALUE_STORE__');
+
+        // For optimization, we want to only attempt to copy a few files from the default key-value store
+        const possibleInputKeys = ['INPUT', 'INPUT.json', 'INPUT.bin', 'INPUT.txt'];
+
+        if (storagePathExists) {
+            // Create temporary folder to save important files in
+            ensureDirSync(temporaryPath);
+
+            // Go through each file and save the ones that are important
+            for (const entity of possibleInputKeys) {
+                const originalFilePath = resolve(folder, entity);
+                const tempFilePath = resolve(temporaryPath, entity);
+
+                try {
+                    moveSync(originalFilePath, tempFilePath);
+                } catch {
+                    // Ignore
+                }
+            }
+
+            // Remove the original folder and all its content
+            let counter = 0;
+            let tempPathForOldFolder = resolve(folder, `../__OLD_DEFAULT_${counter}__`);
+            let done = false;
+
+            while (!done) {
+                try {
+                    moveSync(folder, tempPathForOldFolder);
+                    done = true;
+                } catch {
+                    tempPathForOldFolder = resolve(folder, `../__OLD_DEFAULT_${++counter}__`);
+                }
+            }
+
+            // Replace the temporary folder with the original folder
+            moveSync(temporaryPath, folder);
+
+            // Remove the old folder
+            return async () => (await this.batchRemoveFiles(tempPathForOldFolder))();
+        }
+
+        return async () => Promise.resolve();
+    }
+
+    private async batchRemoveFiles(folder: string, counter = 0): Promise<() => Promise<void>> {
+        const folderExists = pathExistsSync(folder);
+
+        if (folderExists) {
+            const temporaryFolder = resolve(folder, `../__CRAWLEE_TEMPORARY_${counter}__`);
+
+            try {
+                // Rename the old folder to the new one to allow background deletions
+                await move(folder, temporaryFolder);
+            } catch {
+                // Folder exists already, try again with an incremented counter
+                return this.batchRemoveFiles(folder, ++counter);
+            }
+
+            return async () => {
+                // Read all files in the folder
+                const entries = await readdir(temporaryFolder);
+
+                let processed = 0;
+                let promises: Promise<void>[] = [];
+
+                for (const entry of entries) {
+                    processed++;
+                    promises.push(rm(resolve(temporaryFolder, entry), { force: true }));
+
+                    // Every 2000 files, delete them
+                    if (processed % 2000 === 0) {
+                        await Promise.allSettled(promises);
+                        promises = [];
+                    }
+                }
+
+                // Ensure last promises are handled
+                await Promise.allSettled(promises);
+
+                // Delete the folder itself
+                await rm(temporaryFolder, { force: true, recursive: true });
+            };
+        }
+
+        return async () => Promise.resolve();
+    }
+}
+
+
+
+MEMORY.TS
+
+import type { InternalKeyRecord } from '../../resource-clients/key-value-store';
+import type { StorageImplementation } from '../common';
+
+export class KeyValueMemoryEntry implements StorageImplementation<InternalKeyRecord> {
+    private data!: InternalKeyRecord;
+
+    async get() {
+        return this.data;
+    }
+
+    update(data: InternalKeyRecord) {
+        this.data = data;
+    }
+
+    delete() {
+        // No-op
+    }
+}
+
+
+
+FS.TS
+
+import { readFile, rm } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { basename } from 'node:path/win32';
+
+import { AsyncQueue } from '@sapphire/async-queue';
+import { ensureDir } from 'fs-extra';
+import mime from 'mime-types';
+
+import { lockAndWrite } from '../../background-handler/fs-utils';
+import type { InternalKeyRecord } from '../../resource-clients/key-value-store';
+import { memoryStorageLog } from '../../utils';
+import type { StorageImplementation } from '../common';
+
+import type { CreateStorageImplementationOptions } from '.';
+
+export class KeyValueFileSystemEntry implements StorageImplementation<InternalKeyRecord> {
+    private storeDirectory: string;
+    private writeMetadata: boolean;
+
+    private filePath!: string;
+    private fileMetadataPath!: string;
+    private rawRecord!: Omit<InternalKeyRecord, 'value'>;
+    private fsQueue = new AsyncQueue();
+
+    constructor(options: CreateStorageImplementationOptions) {
+        this.storeDirectory = options.storeDirectory;
+        this.writeMetadata = options.writeMetadata;
+    }
+
+    async get(): Promise<InternalKeyRecord> {
+        await this.fsQueue.wait();
+        let file: Buffer | string;
+
+        try {
+            file = await readFile(this.filePath);
+        } catch {
+            try {
+                // Try without extension
+                file = await readFile(resolve(this.storeDirectory, this.rawRecord.key));
+                memoryStorageLog.warning(
+                    [
+                        `Key-value entry "${this.rawRecord.key}" for store ${basename(
+                            this.storeDirectory,
+                        )} does not have a file extension, assuming it as text.`,
+                        'If you want to have correct interpretation of the file, you should add a file extension to the entry.',
+                    ].join('\n'),
+                );
+                file = file.toString('utf-8');
+            } catch {
+                // This is impossible to happen, but just in case
+                throw new Error(`Could not find file at ${this.filePath}`);
+            }
+        } finally {
+            this.fsQueue.shift();
+        }
+
+        return {
+            ...this.rawRecord,
+            value: file,
+        };
+    }
+
+    async update(data: InternalKeyRecord) {
+        await this.fsQueue.wait();
+        const contentType = mime.contentType(data.key);
+        const fileName =
+            // the content type might include charset, e.g. `text/html; charset=utf-8`, so we check via `startsWith` instead of `===`
+            contentType && data.contentType && contentType.startsWith(data.contentType)
+                ? data.key
+                : `${data.key}.${data.extension}`;
+
+        this.filePath ??= resolve(this.storeDirectory, fileName);
+        this.fileMetadataPath ??= resolve(this.storeDirectory, `${data.key}.__metadata__.json`);
+
+        const { value, ...rest } = data;
+        this.rawRecord = rest;
+
+        try {
+            await ensureDir(dirname(this.filePath));
+            await lockAndWrite(this.filePath, value, false);
+
+            if (this.writeMetadata) {
+                await lockAndWrite(this.fileMetadataPath, JSON.stringify(rest), true);
+            }
+        } finally {
+            this.fsQueue.shift();
+        }
+    }
+
+    async delete() {
+        await this.fsQueue.wait();
+        await rm(this.filePath, { force: true });
+        await rm(this.fileMetadataPath, { force: true });
+        this.fsQueue.shift();
+    }
+}
+
+
+
+INDEX.TS
+
+import { KeyValueFileSystemEntry } from './fs';
+import { KeyValueMemoryEntry } from './memory';
+import type { InternalKeyRecord } from '../../resource-clients/key-value-store';
+import type { StorageImplementation } from '../common';
+
+export function createKeyValueStorageImplementation(
+    options: CreateStorageImplementationOptions,
+): StorageImplementation<InternalKeyRecord> {
+    if (options.persistStorage) {
+        return new KeyValueFileSystemEntry(options);
+    }
+
+    return new KeyValueMemoryEntry();
+}
+
+export interface CreateStorageImplementationOptions {
+    persistStorage: boolean;
+    storeDirectory: string;
+    writeMetadata: boolean;
+}
+
+
+
+MEMORY.TS
+
+import type { InternalRequest } from '../../resource-clients/request-queue';
+import type { StorageImplementation } from '../common';
+
+export class RequestQueueMemoryEntry implements StorageImplementation<InternalRequest> {
+    private data!: InternalRequest;
+
+    async get() {
+        return this.data;
+    }
+
+    update(data: InternalRequest) {
+        this.data = data;
+    }
+
+    delete() {
+        // No-op
+    }
+}
+
+
+
+FS.TS
+
+import { readFile, rm } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+
+import { AsyncQueue } from '@sapphire/async-queue';
+import { ensureDir } from 'fs-extra';
+
+import { lockAndCallback, lockAndWrite } from '../../background-handler/fs-utils';
+import type { InternalRequest } from '../../resource-clients/request-queue';
+import type { StorageImplementation } from '../common';
+
+import type { CreateStorageImplementationOptions } from '.';
+
+export class RequestQueueFileSystemEntry implements StorageImplementation<InternalRequest> {
+    private filePath: string;
+    private fsQueue = new AsyncQueue();
+    private data?: InternalRequest;
+    private directoryExists = false;
+
+    /**
+     * A "sweep" timeout that is created/refreshed whenever this entry is accessed/updated.
+     * It exists to ensure that the entry is not kept in memory indefinitely, by sweeping it after 60 seconds of inactivity (in order to keep memory usage low)
+     */
+    private sweepTimeout?: NodeJS.Timeout;
+
+    constructor(options: CreateStorageImplementationOptions) {
+        this.filePath = resolve(options.storeDirectory, `${options.requestId}.json`);
+    }
+
+    async get(force = false) {
+        await this.fsQueue.wait();
+        this.setOrRefreshSweepTimeout();
+
+        if (this.data && !force) {
+            this.fsQueue.shift();
+            return this.data;
+        }
+
+        try {
+            return await lockAndCallback(this.filePath, async () => {
+                const req = JSON.parse(await readFile(this.filePath, 'utf-8'));
+                this.data = req;
+
+                return req;
+            });
+        } finally {
+            this.fsQueue.shift();
+        }
+    }
+
+    async update(data: InternalRequest) {
+        await this.fsQueue.wait();
+        this.data = data;
+
+        try {
+            if (!this.directoryExists) {
+                await ensureDir(dirname(this.filePath));
+                this.directoryExists = true;
+            }
+
+            await lockAndWrite(this.filePath, data);
+        } finally {
+            this.setOrRefreshSweepTimeout();
+            this.fsQueue.shift();
+        }
+    }
+
+    async delete() {
+        await this.fsQueue.wait();
+        await rm(this.filePath, { force: true });
+        this.fsQueue.shift();
+    }
+
+    private setOrRefreshSweepTimeout() {
+        if (this.sweepTimeout) {
+            this.sweepTimeout.refresh();
+        } else {
+            this.sweepTimeout = setTimeout(() => {
+                this.sweepTimeout = undefined;
+                this.data = undefined;
+            }, 60_000).unref();
+        }
+    }
+}
+
+
+
+INDEX.TS
+
+import { RequestQueueFileSystemEntry } from './fs';
+import { RequestQueueMemoryEntry } from './memory';
+import type { InternalRequest } from '../../resource-clients/request-queue';
+import type { StorageImplementation } from '../common';
+
+export function createRequestQueueStorageImplementation(
+    options: CreateStorageImplementationOptions,
+): StorageImplementation<InternalRequest> {
+    if (options.persistStorage) {
+        return new RequestQueueFileSystemEntry(options);
+    }
+
+    return new RequestQueueMemoryEntry();
+}
+
+export interface CreateStorageImplementationOptions {
+    persistStorage: boolean;
+    storeDirectory: string;
+    requestId: string;
+}
+
+
+
+COMMON.TS
+
+export interface StorageImplementation<T> {
+    get(force?: boolean): Promise<T>;
+    update(data: T): void | Promise<void>;
+    delete(): void | Promise<void>;
+}
+
+
+
+MEMORY.TS
+
+import type { StorageImplementation } from '../common';
+
+export class DatasetMemoryEntry<Data> implements StorageImplementation<Data> {
+    private data!: Data;
+
+    async get() {
+        return this.data;
+    }
+
+    update(data: Data) {
+        this.data = data;
+    }
+
+    delete() {
+        // No-op
+    }
+}
+
+
+
+FS.TS
+
+import { readFile, rm } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+
+import { AsyncQueue } from '@sapphire/async-queue';
+import { ensureDir } from 'fs-extra';
+
+import { lockAndWrite } from '../../background-handler/fs-utils';
+import type { StorageImplementation } from '../common';
+
+import type { CreateStorageImplementationOptions } from './index';
+
+export class DatasetFileSystemEntry<Data> implements StorageImplementation<Data> {
+    private filePath: string;
+    private fsQueue = new AsyncQueue();
+
+    constructor(options: CreateStorageImplementationOptions) {
+        this.filePath = resolve(options.storeDirectory, `${options.entityId}.json`);
+    }
+
+    async get() {
+        await this.fsQueue.wait();
+        try {
+            return JSON.parse(await readFile(this.filePath, 'utf-8'));
+        } finally {
+            this.fsQueue.shift();
+        }
+    }
+
+    async update(data: Data) {
+        await this.fsQueue.wait();
+        try {
+            await ensureDir(dirname(this.filePath));
+            await lockAndWrite(this.filePath, data);
+        } finally {
+            this.fsQueue.shift();
+        }
+    }
+
+    async delete() {
+        await this.fsQueue.wait();
+        await rm(this.filePath, { force: true });
+        this.fsQueue.shift();
+    }
+}
+
+
+
+INDEX.TS
+
+import type { Dictionary } from '@crawlee/types';
+
+import { DatasetFileSystemEntry } from './fs';
+import { DatasetMemoryEntry } from './memory';
+import type { StorageImplementation } from '../common';
+
+export function createDatasetStorageImplementation<Data extends Dictionary>(
+    options: CreateStorageImplementationOptions,
+): StorageImplementation<Data> {
+    if (options.persistStorage) {
+        return new DatasetFileSystemEntry<Data>(options);
+    }
+
+    return new DatasetMemoryEntry<Data>();
+}
+
+export interface CreateStorageImplementationOptions {
+    persistStorage: boolean;
+    storeDirectory: string;
+    /** The actual id of the file to save */
+    entityId: string;
+}
+
+
+
+DATASET-COLLECTION.TS
+
+import { resolve } from 'path';
+
+import type * as storage from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+
+import { DatasetClient } from './dataset';
+import { scheduleBackgroundTask } from '../background-handler';
+import { findOrCacheDatasetByPossibleId } from '../cache-helpers';
+import type { MemoryStorage } from '../index';
+
+export interface DatasetCollectionClientOptions {
+    baseStorageDirectory: string;
+    client: MemoryStorage;
+}
+
+export class DatasetCollectionClient implements storage.DatasetCollectionClient {
+    private readonly datasetsDirectory: string;
+    private readonly client: MemoryStorage;
+
+    constructor({ baseStorageDirectory, client }: DatasetCollectionClientOptions) {
+        this.datasetsDirectory = resolve(baseStorageDirectory);
+        this.client = client;
+    }
+
+    async list(): ReturnType<storage.DatasetCollectionClient['list']> {
+        return {
+            total: this.client.datasetClientsHandled.length,
+            count: this.client.datasetClientsHandled.length,
+            offset: 0,
+            limit: this.client.datasetClientsHandled.length,
+            desc: false,
+            items: this.client.datasetClientsHandled
+                .map((store) => store.toDatasetInfo())
+                .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+        };
+    }
+
+    async getOrCreate(name?: string): Promise<storage.DatasetInfo> {
+        s.string.optional.parse(name);
+
+        if (name) {
+            const found = await findOrCacheDatasetByPossibleId(this.client, name);
+
+            if (found) {
+                return found.toDatasetInfo();
+            }
+        }
+
+        const newStore = new DatasetClient({ name, baseStorageDirectory: this.datasetsDirectory, client: this.client });
+        this.client.datasetClientsHandled.push(newStore);
+
+        // Schedule the worker to write to the disk
+        const datasetInfo = newStore.toDatasetInfo();
+
+        scheduleBackgroundTask({
+            action: 'update-metadata',
+            entityType: 'datasets',
+            entityDirectory: newStore.datasetDirectory,
+            id: datasetInfo.name ?? datasetInfo.id,
+            data: datasetInfo,
+            writeMetadata: this.client.writeMetadata,
+            persistStorage: this.client.persistStorage,
+        });
+
+        return datasetInfo;
+    }
+}
+
+
+
+DATASET.TS
+
+/* eslint-disable import/no-duplicates */
+import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import type { Dictionary } from '@crawlee/types';
+import type * as storage from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+import { move } from 'fs-extra';
+
+import { BaseClient } from './common/base-client';
+import { scheduleBackgroundTask } from '../background-handler';
+import { findOrCacheDatasetByPossibleId } from '../cache-helpers';
+import { StorageTypes } from '../consts';
+import type { StorageImplementation } from '../fs/common';
+import { createDatasetStorageImplementation } from '../fs/dataset';
+import type { MemoryStorage } from '../index';
+
+/**
+ * This is what API returns in the x-apify-pagination-limit
+ * header when no limit query parameter is used.
+ */
+const LIST_ITEMS_LIMIT = 999_999_999_999;
+
+/**
+ * Number of characters of the dataset item file names.
+ * E.g.: 000000019.json - 9 digits
+ */
+const LOCAL_ENTRY_NAME_DIGITS = 9;
+
+export interface DatasetClientOptions {
+    id?: string;
+    name?: string;
+    baseStorageDirectory: string;
+    client: MemoryStorage;
+}
+
+export class DatasetClient<Data extends Dictionary = Dictionary>
+    extends BaseClient
+    implements storage.DatasetClient<Data>
+{
+    name?: string;
+    createdAt = new Date();
+    accessedAt = new Date();
+    modifiedAt = new Date();
+    itemCount = 0;
+    datasetDirectory: string;
+
+    private readonly datasetEntries = new Map<string, StorageImplementation<Data>>();
+    private readonly client: MemoryStorage;
+
+    constructor(options: DatasetClientOptions) {
+        super(options.id ?? randomUUID());
+        this.name = options.name;
+        this.datasetDirectory = resolve(options.baseStorageDirectory, this.name ?? this.id);
+        this.client = options.client;
+    }
+
+    async get(): Promise<storage.DatasetInfo | undefined> {
+        const found = await findOrCacheDatasetByPossibleId(this.client, this.name ?? this.id);
+
+        if (found) {
+            found.updateTimestamps(false);
+            return found.toDatasetInfo();
+        }
+
+        return undefined;
+    }
+
+    async update(newFields: storage.DatasetClientUpdateOptions = {}): Promise<storage.DatasetInfo> {
+        const parsed = s
+            .object({
+                name: s.string.lengthGreaterThan(0).optional,
+            })
+            .parse(newFields);
+
+        // Check by id
+        const existingStoreById = await findOrCacheDatasetByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.Dataset);
+        }
+
+        // Skip if no changes
+        if (!parsed.name) {
+            return existingStoreById.toDatasetInfo();
+        }
+
+        // Check that name is not in use already
+        const existingStoreByName = this.client.datasetClientsHandled.find(
+            (store) => store.name?.toLowerCase() === parsed.name!.toLowerCase(),
+        );
+
+        if (existingStoreByName) {
+            this.throwOnDuplicateEntry(StorageTypes.Dataset, 'name', parsed.name);
+        }
+
+        existingStoreById.name = parsed.name;
+
+        const previousDir = existingStoreById.datasetDirectory;
+
+        existingStoreById.datasetDirectory = resolve(
+            this.client.datasetsDirectory,
+            parsed.name ?? existingStoreById.name ?? existingStoreById.id,
+        );
+
+        await move(previousDir, existingStoreById.datasetDirectory, { overwrite: true });
+
+        // Update timestamps
+        existingStoreById.updateTimestamps(true);
+
+        return existingStoreById.toDatasetInfo();
+    }
+
+    async delete(): Promise<void> {
+        const storeIndex = this.client.datasetClientsHandled.findIndex((store) => store.id === this.id);
+
+        if (storeIndex !== -1) {
+            const [oldClient] = this.client.datasetClientsHandled.splice(storeIndex, 1);
+            oldClient.itemCount = 0;
+            oldClient.datasetEntries.clear();
+
+            await rm(oldClient.datasetDirectory, { recursive: true, force: true });
+        }
+    }
+
+    async downloadItems(): Promise<Buffer> {
+        throw new Error('This method is not implemented in @crawlee/memory-storage');
+    }
+
+    async listItems(options: storage.DatasetClientListOptions = {}): Promise<storage.PaginatedList<Data>> {
+        const {
+            limit = LIST_ITEMS_LIMIT,
+            offset = 0,
+            desc,
+        } = s
+            .object({
+                desc: s.boolean.optional,
+                limit: s.number.int.optional,
+                offset: s.number.int.optional,
+            })
+            .parse(options);
+
+        // Check by id
+        const existingStoreById = await findOrCacheDatasetByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.Dataset);
+        }
+
+        const [start, end] = existingStoreById.getStartAndEndIndexes(
+            desc ? Math.max(existingStoreById.itemCount - offset - limit, 0) : offset,
+            limit,
+        );
+
+        const items: Data[] = [];
+
+        for (let idx = start; idx < end; idx++) {
+            const entryNumber = this.generateLocalEntryName(idx);
+            items.push(await existingStoreById.datasetEntries.get(entryNumber)!.get());
+        }
+
+        existingStoreById.updateTimestamps(false);
+
+        return {
+            count: items.length,
+            desc: desc ?? false,
+            items: desc ? items.reverse() : items,
+            limit,
+            offset,
+            total: existingStoreById.itemCount,
+        };
+    }
+
+    async pushItems(items: string | Data | string[] | Data[]): Promise<void> {
+        const rawItems = s
+            .union(
+                s.string,
+                s.object<Data>({} as Data).passthrough,
+                s.array(s.union(s.string, s.object<Data>({} as Data).passthrough)),
+            )
+            .parse(items) as Data[];
+
+        // Check by id
+        const existingStoreById = await findOrCacheDatasetByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.Dataset);
+        }
+
+        const normalized = this.normalizeItems(rawItems);
+
+        const addedIds: string[] = [];
+
+        for (const entry of normalized) {
+            const idx = this.generateLocalEntryName(++existingStoreById.itemCount);
+            const storageEntry = createDatasetStorageImplementation({
+                entityId: idx,
+                persistStorage: this.client.persistStorage,
+                storeDirectory: existingStoreById.datasetDirectory,
+            });
+
+            await storageEntry.update(entry);
+
+            existingStoreById.datasetEntries.set(idx, storageEntry);
+            addedIds.push(idx);
+        }
+
+        existingStoreById.updateTimestamps(true);
+    }
+
+    toDatasetInfo(): storage.DatasetInfo {
+        return {
+            id: this.id,
+            accessedAt: this.accessedAt,
+            createdAt: this.createdAt,
+            itemCount: this.itemCount,
+            modifiedAt: this.modifiedAt,
+            name: this.name,
+        };
+    }
+
+    private generateLocalEntryName(idx: number): string {
+        return idx.toString().padStart(LOCAL_ENTRY_NAME_DIGITS, '0');
+    }
+
+    private getStartAndEndIndexes(offset: number, limit = this.itemCount) {
+        const start = offset + 1;
+        const end = Math.min(offset + limit, this.itemCount) + 1;
+        return [start, end] as const;
+    }
+
+    /**
+     * To emulate API and split arrays of items into individual dataset items,
+     * we need to normalize the input items - which can be strings, objects
+     * or arrays of those - into objects, so that we can save them one by one
+     * later. We could potentially do this directly with strings, but let's
+     * not optimize prematurely.
+     */
+    private normalizeItems(items: string | Data | (string | Data)[]): Data[] {
+        if (typeof items === 'string') {
+            items = JSON.parse(items);
+        }
+
+        return Array.isArray(items) ? items.map((item) => this.normalizeItem(item)) : [this.normalizeItem(items)];
+    }
+
+    private normalizeItem(item: string | Data): Data {
+        if (typeof item === 'string') {
+            item = JSON.parse(item) as Data;
+        }
+
+        if (Array.isArray(item)) {
+            throw new Error(
+                `Each dataset item can only be a single JSON object, not an array. Received: [${item.join(',\n')}]`,
+            );
+        }
+
+        if (typeof item !== 'object' || item === null) {
+            throw new Error(`Each dataset item must be a JSON object. Received: ${item}`);
+        }
+
+        return item;
+    }
+
+    private updateTimestamps(hasBeenModified: boolean) {
+        this.accessedAt = new Date();
+
+        if (hasBeenModified) {
+            this.modifiedAt = new Date();
+        }
+
+        const data = this.toDatasetInfo();
+        scheduleBackgroundTask({
+            action: 'update-metadata',
+            data,
+            entityType: 'datasets',
+            entityDirectory: this.datasetDirectory,
+            id: this.name ?? this.id,
+            writeMetadata: this.client.writeMetadata,
+            persistStorage: this.client.persistStorage,
+        });
+    }
+}
+
+
+
+REQUEST-QUEUE.TS
+
+import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import type * as storage from '@crawlee/types';
+import { AsyncQueue } from '@sapphire/async-queue';
+import { s } from '@sapphire/shapeshift';
+import { move } from 'fs-extra';
+
+import { BaseClient } from './common/base-client';
+import { scheduleBackgroundTask } from '../background-handler';
+import { findRequestQueueByPossibleId } from '../cache-helpers';
+import { StorageTypes } from '../consts';
+import type { StorageImplementation } from '../fs/common';
+import { createRequestQueueStorageImplementation } from '../fs/request-queue';
+import type { MemoryStorage } from '../index';
+import { purgeNullsFromObject, uniqueKeyToRequestId } from '../utils';
+
+const requestShape = s.object({
+    id: s.string,
+    url: s.string.url({ allowedProtocols: ['http:', 'https:'] }),
+    uniqueKey: s.string,
+    method: s.string.optional,
+    retryCount: s.number.int.optional,
+    handledAt: s.union(s.string, s.date.valid).optional,
+}).passthrough;
+
+const requestShapeWithoutId = requestShape.omit(['id']);
+
+const batchRequestShapeWithoutId = requestShapeWithoutId.array;
+
+const requestOptionsShape = s.object({
+    forefront: s.boolean.optional,
+});
+
+export interface RequestQueueClientOptions {
+    name?: string;
+    id?: string;
+    baseStorageDirectory: string;
+    client: MemoryStorage;
+}
+
+export interface InternalRequest {
+    id: string;
+    orderNo: number | null;
+    url: string;
+    uniqueKey: string;
+    method: Exclude<storage.RequestOptions['method'], undefined>;
+    retryCount: number;
+    json: string;
+}
+
+export class RequestQueueClient extends BaseClient implements storage.RequestQueueClient {
+    name?: string;
+    createdAt = new Date();
+    accessedAt = new Date();
+    modifiedAt = new Date();
+    handledRequestCount = 0;
+    pendingRequestCount = 0;
+    requestQueueDirectory: string;
+    private readonly mutex = new AsyncQueue();
+
+    private readonly requests = new Map<string, StorageImplementation<InternalRequest>>();
+    private readonly client: MemoryStorage;
+
+    constructor(options: RequestQueueClientOptions) {
+        super(options.id ?? randomUUID());
+        this.name = options.name;
+        this.requestQueueDirectory = resolve(options.baseStorageDirectory, this.name ?? this.id);
+        this.client = options.client;
+    }
+
+    private async getQueue(): Promise<RequestQueueClient> {
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        existingQueueById.updateTimestamps(false);
+
+        return existingQueueById;
+    }
+
+    async get(): Promise<storage.RequestQueueInfo | undefined> {
+        const found = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (found) {
+            found.updateTimestamps(false);
+            return found.toRequestQueueInfo();
+        }
+
+        return undefined;
+    }
+
+    async update(newFields: { name?: string | undefined }): Promise<storage.RequestQueueInfo | undefined> {
+        // The validation is intentionally loose to prevent issues
+        // when swapping to a remote queue in production.
+        const parsed = s
+            .object({
+                name: s.string.lengthGreaterThan(0).optional,
+            })
+            .passthrough.parse(newFields);
+
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        // Skip if no changes
+        if (!parsed.name) {
+            return existingQueueById.toRequestQueueInfo();
+        }
+
+        // Check that name is not in use already
+        const existingQueueByName = this.client.requestQueuesHandled.find(
+            (queue) => queue.name?.toLowerCase() === parsed.name!.toLowerCase(),
+        );
+
+        if (existingQueueByName) {
+            this.throwOnDuplicateEntry(StorageTypes.RequestQueue, 'name', parsed.name);
+        }
+
+        existingQueueById.name = parsed.name;
+
+        const previousDir = existingQueueById.requestQueueDirectory;
+
+        existingQueueById.requestQueueDirectory = resolve(
+            this.client.requestQueuesDirectory,
+            parsed.name ?? existingQueueById.name ?? existingQueueById.id,
+        );
+
+        await move(previousDir, existingQueueById.requestQueueDirectory, { overwrite: true });
+
+        // Update timestamps
+        existingQueueById.updateTimestamps(true);
+
+        return existingQueueById.toRequestQueueInfo();
+    }
+
+    async delete(): Promise<void> {
+        const storeIndex = this.client.requestQueuesHandled.findIndex((queue) => queue.id === this.id);
+
+        if (storeIndex !== -1) {
+            const [oldClient] = this.client.requestQueuesHandled.splice(storeIndex, 1);
+            oldClient.pendingRequestCount = 0;
+            oldClient.requests.clear();
+
+            await rm(oldClient.requestQueueDirectory, { recursive: true, force: true });
+        }
+    }
+
+    async listHead(options: storage.ListOptions = {}): Promise<storage.QueueHead> {
+        const { limit } = s
+            .object({
+                limit: s.number.optional.default(100),
+            })
+            .parse(options);
+
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        existingQueueById.updateTimestamps(false);
+
+        const items = [];
+
+        for (const storageEntry of existingQueueById.requests.values()) {
+            if (items.length === limit) {
+                break;
+            }
+
+            const request = await storageEntry.get();
+
+            if (request.orderNo) {
+                items.push(request);
+            }
+        }
+
+        return {
+            limit,
+            hadMultipleClients: false,
+            queueModifiedAt: existingQueueById.modifiedAt,
+            items: items.sort((a, b) => a.orderNo! - b.orderNo!).map(({ json }) => this._jsonToRequest(json)!),
+        };
+    }
+
+    async listAndLockHead(options: storage.ListAndLockOptions): Promise<storage.ListAndLockHeadResult> {
+        const { limit, lockSecs } = s
+            .object({
+                limit: s.number.lessThanOrEqual(25).optional.default(25),
+                lockSecs: s.number,
+            })
+            .parse(options);
+
+        const queue = await this.getQueue();
+
+        const start = Date.now();
+        const isLocked = (request: InternalRequest) =>
+            !request.orderNo || request.orderNo > start || request.orderNo < -start;
+
+        const items = [];
+
+        await this.mutex.wait();
+
+        try {
+            for (const storageEntry of queue.requests.values()) {
+                if (items.length === limit) {
+                    break;
+                }
+
+                // Always fetch from fs, as this also locks and we do not want to end up in a state where another process locked the request but we have cached it as unlocked
+                const request = await storageEntry.get(true);
+
+                if (isLocked(request)) {
+                    continue;
+                }
+
+                request.orderNo = (start + lockSecs * 1000) * (request.orderNo! > 0 ? 1 : -1);
+                await storageEntry.update(request);
+
+                items.push(request);
+            }
+
+            return {
+                limit,
+                lockSecs,
+                hadMultipleClients: false,
+                queueModifiedAt: queue.modifiedAt,
+                items: items.map(({ json }) => this._jsonToRequest(json)!),
+            };
+        } finally {
+            this.mutex.shift();
+        }
+    }
+
+    async prolongRequestLock(
+        id: string,
+        options: storage.ProlongRequestLockOptions,
+    ): Promise<storage.ProlongRequestLockResult> {
+        s.string.parse(id);
+        const { lockSecs, forefront } = s
+            .object({
+                lockSecs: s.number,
+                forefront: s.boolean.optional.default(false),
+            })
+            .parse(options);
+
+        const queue = await this.getQueue();
+        const request = queue.requests.get(id);
+
+        const internalRequest = await request?.get();
+
+        if (!internalRequest) {
+            throw new Error(`Request with ID ${id} not found in queue ${queue.name ?? queue.id}`);
+        }
+
+        const canProlong = (r: InternalRequest) => !!r.orderNo;
+
+        if (!canProlong(internalRequest)) {
+            throw new Error(`Request with ID ${id} has already been handled in queue ${queue.name ?? queue.id}`);
+        }
+
+        const unlockTimestamp = Math.abs(internalRequest.orderNo!) + lockSecs * 1000;
+        internalRequest.orderNo = forefront ? -unlockTimestamp : unlockTimestamp;
+
+        await request?.update(internalRequest);
+
+        return {
+            lockExpiresAt: new Date(unlockTimestamp),
+        };
+    }
+
+    async deleteRequestLock(id: string, options: storage.DeleteRequestLockOptions = {}): Promise<void> {
+        s.string.parse(id);
+        const { forefront } = s
+            .object({
+                forefront: s.boolean.optional.default(false),
+            })
+            .parse(options);
+
+        const queue = await this.getQueue();
+        const request = queue.requests.get(id);
+
+        const internalRequest = await request?.get();
+
+        if (!internalRequest) {
+            throw new Error(`Request with ID ${id} not found in queue ${queue.name ?? queue.id}`);
+        }
+
+        const start = Date.now();
+
+        const isLocked = (r: InternalRequest) => !r.orderNo || r.orderNo > start || r.orderNo < -start;
+        if (!isLocked(internalRequest)) {
+            throw new Error(`Request with ID ${id} is not locked in queue ${queue.name ?? queue.id}`);
+        }
+
+        internalRequest.orderNo = forefront ? -start : start;
+
+        await request?.update(internalRequest);
+    }
+
+    async addRequest(
+        request: storage.RequestSchema,
+        options: storage.RequestOptions = {},
+    ): Promise<storage.QueueOperationInfo> {
+        requestShapeWithoutId.parse(request);
+        requestOptionsShape.parse(options);
+
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        const requestModel = this._createInternalRequest(request, options.forefront);
+
+        const existingRequestWithIdEntry = existingQueueById.requests.get(requestModel.id);
+
+        // We already have the request present, so we return information about it
+        if (existingRequestWithIdEntry) {
+            const existingRequestWithId = await existingRequestWithIdEntry.get();
+            existingQueueById.updateTimestamps(false);
+
+            return {
+                requestId: existingRequestWithId.id,
+                wasAlreadyHandled: existingRequestWithId.orderNo === null,
+                wasAlreadyPresent: true,
+            };
+        }
+
+        const newEntry = createRequestQueueStorageImplementation({
+            persistStorage: existingQueueById.client.persistStorage,
+            requestId: requestModel.id,
+            storeDirectory: existingQueueById.requestQueueDirectory,
+        });
+
+        await newEntry.update(requestModel);
+
+        existingQueueById.requests.set(requestModel.id, newEntry);
+        existingQueueById.updateTimestamps(true);
+
+        if (requestModel.orderNo) {
+            existingQueueById.pendingRequestCount += 1;
+        } else {
+            existingQueueById.handledRequestCount += 1;
+        }
+
+        return {
+            requestId: requestModel.id,
+            // We return wasAlreadyHandled: false even though the request may
+            // have been added as handled, because that's how API behaves.
+            wasAlreadyHandled: false,
+            wasAlreadyPresent: false,
+        };
+    }
+
+    async batchAddRequests(
+        requests: storage.RequestSchema[],
+        options: storage.RequestOptions = {},
+    ): Promise<storage.BatchAddRequestsResult> {
+        batchRequestShapeWithoutId.parse(requests);
+        requestOptionsShape.parse(options);
+
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        const result: storage.BatchAddRequestsResult = {
+            processedRequests: [],
+            unprocessedRequests: [],
+        };
+
+        for (const model of requests) {
+            const requestModel = this._createInternalRequest(model, options.forefront);
+
+            const existingRequestWithIdEntry = existingQueueById.requests.get(requestModel.id);
+
+            if (existingRequestWithIdEntry) {
+                const existingRequestWithId = await existingRequestWithIdEntry.get();
+
+                result.processedRequests.push({
+                    requestId: existingRequestWithId.id,
+                    uniqueKey: existingRequestWithId.uniqueKey,
+                    wasAlreadyHandled: existingRequestWithId.orderNo === null,
+                    wasAlreadyPresent: true,
+                });
+
+                continue;
+            }
+
+            const newEntry = createRequestQueueStorageImplementation({
+                persistStorage: existingQueueById.client.persistStorage,
+                requestId: requestModel.id,
+                storeDirectory: existingQueueById.requestQueueDirectory,
+            });
+
+            await newEntry.update(requestModel);
+
+            existingQueueById.requests.set(requestModel.id, newEntry);
+
+            if (requestModel.orderNo) {
+                existingQueueById.pendingRequestCount += 1;
+            } else {
+                existingQueueById.handledRequestCount += 1;
+            }
+
+            result.processedRequests.push({
+                requestId: requestModel.id,
+                uniqueKey: requestModel.uniqueKey,
+                // We return wasAlreadyHandled: false even though the request may
+                // have been added as handled, because that's how API behaves.
+                wasAlreadyHandled: false,
+                wasAlreadyPresent: false,
+            });
+        }
+
+        existingQueueById.updateTimestamps(true);
+
+        return result;
+    }
+
+    async getRequest(id: string): Promise<storage.RequestOptions | undefined> {
+        s.string.parse(id);
+        const queue = await this.getQueue();
+        const json = (await queue.requests.get(id)?.get())?.json;
+        return this._jsonToRequest(json);
+    }
+
+    async updateRequest(
+        request: storage.UpdateRequestSchema,
+        options: storage.RequestOptions = {},
+    ): Promise<storage.QueueOperationInfo> {
+        requestShape.parse(request);
+        requestOptionsShape.parse(options);
+
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        const requestModel = this._createInternalRequest(request, options.forefront);
+
+        // First we need to check the existing request to be
+        // able to return information about its handled state.
+
+        const existingRequestEntry = existingQueueById.requests.get(requestModel.id);
+
+        // Undefined means that the request is not present in the queue.
+        // We need to insert it, to behave the same as API.
+        if (!existingRequestEntry) {
+            return this.addRequest(request, options);
+        }
+
+        const existingRequest = await existingRequestEntry.get();
+
+        const newEntry = createRequestQueueStorageImplementation({
+            persistStorage: existingQueueById.client.persistStorage,
+            requestId: requestModel.id,
+            storeDirectory: existingQueueById.requestQueueDirectory,
+        });
+
+        await newEntry.update(requestModel);
+
+        // When updating the request, we need to make sure that
+        // the handled counts are updated correctly in all cases.
+        existingQueueById.requests.set(requestModel.id, newEntry);
+
+        const isRequestHandledStateChanging = typeof existingRequest.orderNo !== typeof requestModel.orderNo;
+        const requestWasHandledBeforeUpdate = existingRequest.orderNo === null;
+        const requestIsHandledAfterUpdate = requestModel.orderNo === null;
+
+        if (isRequestHandledStateChanging) {
+            existingQueueById.pendingRequestCount += requestWasHandledBeforeUpdate ? 1 : -1;
+        }
+
+        if (requestIsHandledAfterUpdate) {
+            existingQueueById.handledRequestCount += 1;
+        }
+
+        existingQueueById.updateTimestamps(true);
+
+        return {
+            requestId: requestModel.id,
+            wasAlreadyHandled: requestWasHandledBeforeUpdate,
+            wasAlreadyPresent: true,
+        };
+    }
+
+    async deleteRequest(id: string): Promise<void> {
+        const existingQueueById = await findRequestQueueByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingQueueById) {
+            this.throwOnNonExisting(StorageTypes.RequestQueue);
+        }
+
+        const entry = existingQueueById.requests.get(id);
+
+        if (entry) {
+            const request = await entry.get();
+
+            existingQueueById.requests.delete(id);
+            existingQueueById.updateTimestamps(true);
+
+            if (request.orderNo) {
+                existingQueueById.pendingRequestCount -= 1;
+            } else {
+                existingQueueById.handledRequestCount -= 1;
+            }
+
+            await entry.delete();
+        }
+    }
+
+    toRequestQueueInfo(): storage.RequestQueueInfo {
+        return {
+            accessedAt: this.accessedAt,
+            createdAt: this.createdAt,
+            hadMultipleClients: false,
+            handledRequestCount: this.handledRequestCount,
+            id: this.id,
+            modifiedAt: this.modifiedAt,
+            name: this.name,
+            pendingRequestCount: this.pendingRequestCount,
+            stats: {},
+            totalRequestCount: this.requests.size,
+            userId: '1',
+        };
+    }
+
+    private updateTimestamps(hasBeenModified: boolean) {
+        this.accessedAt = new Date();
+
+        if (hasBeenModified) {
+            this.modifiedAt = new Date();
+        }
+
+        const data = this.toRequestQueueInfo();
+        scheduleBackgroundTask({
+            action: 'update-metadata',
+            data,
+            entityType: 'requestQueues',
+            entityDirectory: this.requestQueueDirectory,
+            id: this.name ?? this.id,
+            writeMetadata: this.client.writeMetadata,
+            persistStorage: this.client.persistStorage,
+        });
+    }
+
+    private _jsonToRequest<T>(requestJson?: string): T | undefined {
+        if (!requestJson) return undefined;
+        const request = JSON.parse(requestJson);
+        return purgeNullsFromObject(request);
+    }
+
+    private _createInternalRequest(request: storage.RequestSchema, forefront?: boolean): InternalRequest {
+        const orderNo = this._calculateOrderNo(request, forefront);
+        const id = uniqueKeyToRequestId(request.uniqueKey);
+
+        if (request.id && request.id !== id) {
+            throw new Error('Request ID does not match its uniqueKey.');
+        }
+
+        const json = JSON.stringify({ ...request, id });
+        return {
+            id,
+            json,
+            method: request.method,
+            orderNo,
+            retryCount: request.retryCount ?? 0,
+            uniqueKey: request.uniqueKey,
+            url: request.url,
+        };
+    }
+
+    private _calculateOrderNo(request: storage.RequestSchema, forefront?: boolean) {
+        if (request.handledAt) return null;
+
+        const timestamp = Date.now();
+
+        return forefront ? -timestamp : timestamp;
+    }
+}
+
+
+
+KEY-VALUE-STORE-COLLECTION.TS
+
+import { resolve } from 'node:path';
+
+import type * as storage from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+
+import { KeyValueStoreClient } from './key-value-store';
+import { scheduleBackgroundTask } from '../background-handler';
+import { findOrCacheKeyValueStoreByPossibleId } from '../cache-helpers';
+import type { MemoryStorage } from '../index';
+
+export interface KeyValueStoreCollectionClientOptions {
+    baseStorageDirectory: string;
+    client: MemoryStorage;
+}
+
+export class KeyValueStoreCollectionClient implements storage.KeyValueStoreCollectionClient {
+    private readonly keyValueStoresDirectory: string;
+    private readonly client: MemoryStorage;
+
+    constructor({ baseStorageDirectory, client }: KeyValueStoreCollectionClientOptions) {
+        this.keyValueStoresDirectory = resolve(baseStorageDirectory);
+        this.client = client;
+    }
+
+    async list(): ReturnType<storage.KeyValueStoreCollectionClient['list']> {
+        return {
+            total: this.client.keyValueStoresHandled.length,
+            count: this.client.keyValueStoresHandled.length,
+            offset: 0,
+            limit: this.client.keyValueStoresHandled.length,
+            desc: false,
+            items: this.client.keyValueStoresHandled
+                .map((store) => store.toKeyValueStoreInfo())
+                .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+        };
+    }
+
+    async getOrCreate(name?: string): Promise<storage.KeyValueStoreInfo> {
+        s.string.optional.parse(name);
+
+        if (name) {
+            const found = await findOrCacheKeyValueStoreByPossibleId(this.client, name);
+
+            if (found) {
+                return found.toKeyValueStoreInfo();
+            }
+        }
+
+        const newStore = new KeyValueStoreClient({
+            name,
+            baseStorageDirectory: this.keyValueStoresDirectory,
+            client: this.client,
+        });
+        this.client.keyValueStoresHandled.push(newStore);
+
+        // Schedule the worker to write to the disk
+        const kvStoreInfo = newStore.toKeyValueStoreInfo();
+
+        scheduleBackgroundTask({
+            action: 'update-metadata',
+            entityType: 'keyValueStores',
+            entityDirectory: newStore.keyValueStoreDirectory,
+            id: kvStoreInfo.name ?? kvStoreInfo.id,
+            data: kvStoreInfo,
+            writeMetadata: this.client.writeMetadata,
+            persistStorage: this.client.persistStorage,
+        });
+
+        return kvStoreInfo;
+    }
+}
+
+
+
+REQUEST-QUEUE-COLLECTION.TS
+
+import { resolve } from 'node:path';
+
+import type * as storage from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+
+import { RequestQueueClient } from './request-queue';
+import { scheduleBackgroundTask } from '../background-handler';
+import { findRequestQueueByPossibleId } from '../cache-helpers';
+import type { MemoryStorage } from '../index';
+
+export interface RequestQueueCollectionClientOptions {
+    baseStorageDirectory: string;
+    client: MemoryStorage;
+}
+
+export class RequestQueueCollectionClient implements storage.RequestQueueCollectionClient {
+    private readonly requestQueuesDirectory: string;
+    private readonly client: MemoryStorage;
+
+    constructor({ baseStorageDirectory, client }: RequestQueueCollectionClientOptions) {
+        this.requestQueuesDirectory = resolve(baseStorageDirectory);
+        this.client = client;
+    }
+
+    async list(): ReturnType<storage.RequestQueueCollectionClient['list']> {
+        return {
+            total: this.client.requestQueuesHandled.length,
+            count: this.client.requestQueuesHandled.length,
+            offset: 0,
+            limit: this.client.requestQueuesHandled.length,
+            desc: false,
+            items: this.client.requestQueuesHandled
+                .map((store) => store.toRequestQueueInfo())
+                .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+        };
+    }
+
+    async getOrCreate(name?: string): Promise<storage.RequestQueueInfo> {
+        s.string.optional.parse(name);
+
+        if (name) {
+            const found = await findRequestQueueByPossibleId(this.client, name);
+
+            if (found) {
+                return found.toRequestQueueInfo();
+            }
+        }
+
+        const newStore = new RequestQueueClient({
+            name,
+            baseStorageDirectory: this.requestQueuesDirectory,
+            client: this.client,
+        });
+        this.client.requestQueuesHandled.push(newStore);
+
+        // Schedule the worker to write to the disk
+        const queueInfo = newStore.toRequestQueueInfo();
+
+        scheduleBackgroundTask({
+            action: 'update-metadata',
+            entityType: 'requestQueues',
+            entityDirectory: newStore.requestQueueDirectory,
+            id: queueInfo.name ?? queueInfo.id,
+            data: queueInfo,
+            writeMetadata: this.client.writeMetadata,
+            persistStorage: this.client.persistStorage,
+        });
+
+        return queueInfo;
+    }
+}
+
+
+
+BASE-CLIENT.TS
+
+import type { StorageTypes } from '../../consts';
+
+export class BaseClient {
+    id: string;
+
+    constructor(id: string) {
+        this.id = id;
+    }
+
+    protected throwOnNonExisting(clientType: StorageTypes): never {
+        throw new Error(`${clientType} with id: ${this.id} does not exist.`);
+    }
+
+    protected throwOnDuplicateEntry(clientType: StorageTypes, keyName: string, value: string): never {
+        throw new Error(`${clientType} with ${keyName}: ${value} already exists.`);
+    }
+}
+
+
+
+KEY-VALUE-STORE.TS
+
+import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { Readable } from 'node:stream';
+
+import type * as storage from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+import { move } from 'fs-extra';
+import mime from 'mime-types';
+
+import { BaseClient } from './common/base-client';
+import { scheduleBackgroundTask } from '../background-handler';
+import { maybeParseBody } from '../body-parser';
+import { findOrCacheKeyValueStoreByPossibleId } from '../cache-helpers';
+import { DEFAULT_API_PARAM_LIMIT, StorageTypes } from '../consts';
+import type { StorageImplementation } from '../fs/common';
+import { createKeyValueStorageImplementation } from '../fs/key-value-store';
+import type { MemoryStorage } from '../index';
+import { isBuffer, isStream } from '../utils';
+
+const DEFAULT_LOCAL_FILE_EXTENSION = 'bin';
+
+export interface KeyValueStoreClientOptions {
+    name?: string;
+    id?: string;
+    baseStorageDirectory: string;
+    client: MemoryStorage;
+}
+
+export interface InternalKeyRecord {
+    key: string;
+    value: Buffer | string;
+    contentType?: string;
+    extension: string;
+}
+
+export class KeyValueStoreClient extends BaseClient {
+    name?: string;
+    createdAt = new Date();
+    accessedAt = new Date();
+    modifiedAt = new Date();
+    keyValueStoreDirectory: string;
+
+    private readonly keyValueEntries = new Map<string, StorageImplementation<InternalKeyRecord>>();
+    private readonly client: MemoryStorage;
+
+    constructor(options: KeyValueStoreClientOptions) {
+        super(options.id ?? randomUUID());
+        this.name = options.name;
+        this.keyValueStoreDirectory = resolve(options.baseStorageDirectory, this.name ?? this.id);
+        this.client = options.client;
+    }
+
+    async get(): Promise<storage.KeyValueStoreInfo | undefined> {
+        const found = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (found) {
+            found.updateTimestamps(false);
+            return found.toKeyValueStoreInfo();
+        }
+
+        return undefined;
+    }
+
+    async update(newFields: storage.KeyValueStoreClientUpdateOptions = {}): Promise<storage.KeyValueStoreInfo> {
+        const parsed = s
+            .object({
+                name: s.string.lengthGreaterThan(0).optional,
+            })
+            .parse(newFields);
+
+        // Check by id
+        const existingStoreById = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.KeyValueStore);
+        }
+
+        // Skip if no changes
+        if (!parsed.name) {
+            return existingStoreById.toKeyValueStoreInfo();
+        }
+
+        // Check that name is not in use already
+        const existingStoreByName = this.client.keyValueStoresHandled.find(
+            (store) => store.name?.toLowerCase() === parsed.name!.toLowerCase(),
+        );
+
+        if (existingStoreByName) {
+            this.throwOnDuplicateEntry(StorageTypes.KeyValueStore, 'name', parsed.name);
+        }
+
+        existingStoreById.name = parsed.name;
+
+        const previousDir = existingStoreById.keyValueStoreDirectory;
+
+        existingStoreById.keyValueStoreDirectory = resolve(
+            this.client.keyValueStoresDirectory,
+            parsed.name ?? existingStoreById.name ?? existingStoreById.id,
+        );
+
+        await move(previousDir, existingStoreById.keyValueStoreDirectory, { overwrite: true });
+
+        // Update timestamps
+        existingStoreById.updateTimestamps(true);
+
+        return existingStoreById.toKeyValueStoreInfo();
+    }
+
+    async delete(): Promise<void> {
+        const storeIndex = this.client.keyValueStoresHandled.findIndex((store) => store.id === this.id);
+
+        if (storeIndex !== -1) {
+            const [oldClient] = this.client.keyValueStoresHandled.splice(storeIndex, 1);
+            oldClient.keyValueEntries.clear();
+
+            await rm(oldClient.keyValueStoreDirectory, { recursive: true, force: true });
+        }
+    }
+
+    async listKeys(options: storage.KeyValueStoreClientListOptions = {}): Promise<storage.KeyValueStoreClientListData> {
+        const { limit = DEFAULT_API_PARAM_LIMIT, exclusiveStartKey } = s
+            .object({
+                limit: s.number.greaterThan(0).optional,
+                exclusiveStartKey: s.string.optional,
+            })
+            .parse(options);
+
+        // Check by id
+        const existingStoreById = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.KeyValueStore);
+        }
+
+        const items = [];
+
+        for (const storageEntry of existingStoreById.keyValueEntries.values()) {
+            const record = await storageEntry.get();
+
+            const size = Buffer.byteLength(record.value);
+            items.push({
+                key: record.key,
+                size,
+            });
+        }
+
+        // Lexically sort to emulate API.
+        // TODO(vladfrangu): ensure the sorting works the same way as before (if it matters)
+        items.sort((a, b) => {
+            return a.key.localeCompare(b.key);
+        });
+
+        let truncatedItems = items;
+        if (exclusiveStartKey) {
+            const keyPos = items.findIndex((item) => item.key === exclusiveStartKey);
+            if (keyPos !== -1) truncatedItems = items.slice(keyPos + 1);
+        }
+
+        const limitedItems = truncatedItems.slice(0, limit);
+
+        const lastItemInStore = items[items.length - 1];
+        const lastSelectedItem = limitedItems[limitedItems.length - 1];
+        const isLastSelectedItemAbsolutelyLast = lastItemInStore === lastSelectedItem;
+        const nextExclusiveStartKey = isLastSelectedItemAbsolutelyLast ? undefined : lastSelectedItem.key;
+
+        existingStoreById.updateTimestamps(false);
+
+        return {
+            count: items.length,
+            limit,
+            exclusiveStartKey,
+            isTruncated: !isLastSelectedItemAbsolutelyLast,
+            nextExclusiveStartKey,
+            items: limitedItems,
+        };
+    }
+
+    /**
+     * Tests whether a record with the given key exists in the key-value store without retrieving its value.
+     *
+     * @param key The queried record key.
+     * @returns `true` if the record exists, `false` if it does not.
+     */
+    async recordExists(key: string): Promise<boolean> {
+        s.string.parse(key);
+
+        // Check by id
+        const existingStoreById = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.KeyValueStore);
+        }
+
+        return existingStoreById.keyValueEntries.has(key);
+    }
+
+    async getRecord(
+        key: string,
+        options: storage.KeyValueStoreClientGetRecordOptions = {},
+    ): Promise<storage.KeyValueStoreRecord | undefined> {
+        s.string.parse(key);
+        s.object({
+            buffer: s.boolean.optional,
+            // These options are ignored, but kept here
+            // for validation consistency with API client.
+            stream: s.boolean.optional,
+            disableRedirect: s.boolean.optional,
+        }).parse(options);
+
+        // Check by id
+        const existingStoreById = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.KeyValueStore);
+        }
+
+        const storageEntry = existingStoreById.keyValueEntries.get(key);
+
+        if (!storageEntry) {
+            return undefined;
+        }
+
+        const entry = await storageEntry.get();
+
+        const record: storage.KeyValueStoreRecord = {
+            key: entry.key,
+            value: entry.value,
+            contentType: entry.contentType ?? (mime.contentType(entry.extension) as string),
+        };
+
+        if (options.stream) {
+            record.value = Readable.from(record.value);
+        } else if (options.buffer) {
+            record.value = Buffer.from(record.value);
+        } else {
+            record.value = maybeParseBody(record.value, record.contentType!);
+        }
+
+        existingStoreById.updateTimestamps(false);
+
+        return record;
+    }
+
+    async setRecord(record: storage.KeyValueStoreRecord): Promise<void> {
+        s.object({
+            key: s.string.lengthGreaterThan(0),
+            value: s.union(
+                s.null,
+                s.string,
+                s.number,
+                s.instance(Buffer),
+                s.instance(ArrayBuffer),
+                s.typedArray(),
+                // disabling validation will make shapeshift only check the object given is an actual object, not null, nor array
+                s
+                    .object({})
+                    .setValidationEnabled(false),
+            ),
+            contentType: s.string.lengthGreaterThan(0).optional,
+        }).parse(record);
+
+        // Check by id
+        const existingStoreById = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.KeyValueStore);
+        }
+
+        const { key } = record;
+        let { value, contentType } = record;
+
+        const valueIsStream = isStream(value);
+
+        const isValueStreamOrBuffer = valueIsStream || isBuffer(value);
+        // To allow saving Objects to JSON without providing content type
+        if (!contentType) {
+            if (isValueStreamOrBuffer) contentType = 'application/octet-stream';
+            else if (typeof value === 'string') contentType = 'text/plain; charset=utf-8';
+            else contentType = 'application/json; charset=utf-8';
+        }
+
+        const extension = mime.extension(contentType) || DEFAULT_LOCAL_FILE_EXTENSION;
+
+        const isContentTypeJson = extension === 'json';
+
+        if (isContentTypeJson && !isValueStreamOrBuffer && typeof value !== 'string') {
+            try {
+                value = JSON.stringify(value, null, 2);
+            } catch (err: any) {
+                const msg = `The record value cannot be stringified to JSON. Please provide other content type.\nCause: ${err.message}`;
+                throw new Error(msg);
+            }
+        }
+
+        if (valueIsStream) {
+            const chunks = [];
+            for await (const chunk of value) {
+                chunks.push(chunk);
+            }
+            value = Buffer.concat(chunks);
+        }
+
+        const _record = {
+            extension,
+            key,
+            value,
+            contentType,
+        } satisfies InternalKeyRecord;
+
+        const entry = createKeyValueStorageImplementation({
+            persistStorage: this.client.persistStorage,
+            storeDirectory: existingStoreById.keyValueStoreDirectory,
+            writeMetadata: existingStoreById.client.writeMetadata,
+        });
+
+        await entry.update(_record);
+
+        existingStoreById.keyValueEntries.set(key, entry);
+
+        existingStoreById.updateTimestamps(true);
+    }
+
+    async deleteRecord(key: string): Promise<void> {
+        s.string.parse(key);
+
+        // Check by id
+        const existingStoreById = await findOrCacheKeyValueStoreByPossibleId(this.client, this.name ?? this.id);
+
+        if (!existingStoreById) {
+            this.throwOnNonExisting(StorageTypes.KeyValueStore);
+        }
+
+        const entry = existingStoreById.keyValueEntries.get(key);
+
+        if (entry) {
+            existingStoreById.keyValueEntries.delete(key);
+            existingStoreById.updateTimestamps(true);
+            await entry.delete();
+        }
+    }
+
+    toKeyValueStoreInfo(): storage.KeyValueStoreInfo {
+        return {
+            id: this.id,
+            name: this.name,
+            accessedAt: this.accessedAt,
+            createdAt: this.createdAt,
+            modifiedAt: this.modifiedAt,
+            userId: '1',
+        };
+    }
+
+    private updateTimestamps(hasBeenModified: boolean) {
+        this.accessedAt = new Date();
+
+        if (hasBeenModified) {
+            this.modifiedAt = new Date();
+        }
+
+        const data = this.toKeyValueStoreInfo();
+        scheduleBackgroundTask({
+            action: 'update-metadata',
+            data,
+            entityType: 'keyValueStores',
+            entityDirectory: this.keyValueStoreDirectory,
+            id: this.name ?? this.id,
+            writeMetadata: this.client.writeMetadata,
+            persistStorage: this.client.persistStorage,
+        });
+    }
+}
+
+
+
+CONSTS.TS
+
+/**
+ * Length of id property of a Request instance in characters.
+ */
+export const REQUEST_ID_LENGTH = 15;
+
+/**
+ * Types of all emulated storages (currently used for warning messages only).
+ */
+export enum StorageTypes {
+    RequestQueue = 'Request queue',
+    KeyValueStore = 'Key-value store',
+    Dataset = 'Dataset',
+}
+
+/**
+ * Except in dataset items, the default limit for API results is 1000.
+ */
+export const DEFAULT_API_PARAM_LIMIT = 1000;
+
+
+
+UTILS.TS
+
+import { createHash } from 'node:crypto';
+
+import defaultLog from '@apify/log';
+import type * as storage from '@crawlee/types';
+import { s } from '@sapphire/shapeshift';
+
+import { REQUEST_ID_LENGTH } from './consts';
+
+/**
+ * Removes all properties with a null value
+ * from the provided object.
+ */
+export function purgeNullsFromObject<T>(object: T): T {
+    if (object && typeof object === 'object' && !Array.isArray(object)) {
+        for (const [key, value] of Object.entries(object)) {
+            if (value === null) Reflect.deleteProperty(object as Record<string, unknown>, key);
+        }
+    }
+
+    return object;
+}
+
+/**
+ * Creates a standard request ID (same as Platform).
+ */
+export function uniqueKeyToRequestId(uniqueKey: string): string {
+    const str = createHash('sha256')
+        .update(uniqueKey)
+        .digest('base64')
+        .replace(/(\+|\/|=)/g, '');
+
+    return str.length > REQUEST_ID_LENGTH ? str.slice(0, REQUEST_ID_LENGTH) : str;
+}
+
+export function isBuffer(value: unknown): boolean {
+    try {
+        s.union(s.instance(Buffer), s.instance(ArrayBuffer), s.typedArray()).parse(value);
+
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function isStream(value: any): boolean {
+    return (
+        typeof value === 'object' &&
+        value &&
+        ['on', 'pipe'].every((key) => key in value && typeof value[key] === 'function')
+    );
+}
+
+export const memoryStorageLog = defaultLog.child({ prefix: 'MemoryStorage' });
+
+export type BackgroundHandlerReceivedMessage = BackgroundHandlerUpdateMetadataMessage;
+
+export type BackgroundHandlerUpdateMetadataMessage =
+    | MetadataUpdate<'datasets', storage.DatasetInfo>
+    | MetadataUpdate<'keyValueStores', storage.KeyValueStoreInfo>
+    | MetadataUpdate<'requestQueues', storage.RequestQueueInfo>;
+
+type EntityType = 'datasets' | 'keyValueStores' | 'requestQueues';
+
+interface MetadataUpdate<Type extends EntityType, DataType> {
+    entityType: Type;
+    id: string;
+    action: 'update-metadata';
+    entityDirectory: string;
+    data: DataType;
+    writeMetadata: boolean;
+    persistStorage: boolean;
+}
+
+
+
+CACHE-HELPERS.TS
+
+import { access, opendir, readFile } from 'node:fs/promises';
+import { extname, resolve } from 'node:path';
+
+import type * as storage from '@crawlee/types';
+import json5 from 'json5';
+import mimeTypes from 'mime-types';
+
+import { DatasetFileSystemEntry } from './fs/dataset/fs';
+import { KeyValueFileSystemEntry } from './fs/key-value-store/fs';
+import { RequestQueueFileSystemEntry } from './fs/request-queue/fs';
+// eslint-disable-next-line import/order
+import type { MemoryStorage } from './memory-storage';
+
+const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+export async function findOrCacheDatasetByPossibleId(client: MemoryStorage, entryNameOrId: string) {
+    // First check memory cache
+    const found = client.datasetClientsHandled.find(
+        (store) => store.id === entryNameOrId || store.name?.toLowerCase() === entryNameOrId.toLowerCase(),
+    );
+
+    if (found) {
+        return found;
+    }
+
+    const datasetDir = resolve(client.datasetsDirectory, entryNameOrId);
+
+    try {
+        // Check if directory exists
+        await access(datasetDir);
+    } catch {
+        return undefined;
+    }
+
+    // Access the dataset folder
+    const directoryEntries = await opendir(datasetDir);
+
+    let id: string | undefined;
+    let name: string | undefined;
+    let itemCount = 0;
+
+    const entries = new Set<string>();
+
+    let createdAt = new Date();
+    let accessedAt = new Date();
+    let modifiedAt = new Date();
+
+    let hasSeenMetadataFile = false;
+
+    for await (const entry of directoryEntries) {
+        if (entry.isFile()) {
+            if (entry.name === '__metadata__.json') {
+                hasSeenMetadataFile = true;
+
+                // we have found the store metadata file, build out information based on it
+                const fileContent = await readFile(resolve(datasetDir, entry.name), 'utf8');
+                if (!fileContent) continue;
+
+                const metadata = JSON.parse(fileContent) as storage.DatasetInfo;
+                id = metadata.id;
+                name = metadata.name;
+                itemCount = metadata.itemCount;
+                createdAt = new Date(metadata.createdAt);
+                accessedAt = new Date(metadata.accessedAt);
+                modifiedAt = new Date(metadata.modifiedAt);
+
+                continue;
+            }
+
+            const entryName = entry.name.split('.')[0];
+            entries.add(entryName);
+
+            if (!hasSeenMetadataFile) {
+                itemCount++;
+            }
+        }
+    }
+
+    if (id === undefined && name === undefined) {
+        const isUuid = uuidRegex.test(entryNameOrId);
+
+        if (isUuid) {
+            id = entryNameOrId;
+        } else {
+            name = entryNameOrId;
+        }
+    }
+
+    const newClient = new DatasetClient({
+        baseStorageDirectory: client.datasetsDirectory,
+        client,
+        id,
+        name,
+    });
+
+    // Overwrite properties
+    newClient.accessedAt = accessedAt;
+    newClient.createdAt = createdAt;
+    newClient.modifiedAt = modifiedAt;
+    newClient.itemCount = itemCount;
+
+    for (const entryId of entries.values()) {
+        // We create a file system entry instead of possibly making an in-memory one to allow the pre-included data to be used on demand
+        const entry = new DatasetFileSystemEntry({
+            storeDirectory: datasetDir,
+            entityId: entryId,
+            persistStorage: true,
+        });
+
+        // eslint-disable-next-line dot-notation
+        newClient['datasetEntries'].set(entryId, entry);
+    }
+
+    client.datasetClientsHandled.push(newClient);
+
+    return newClient;
+}
+
+export async function findOrCacheKeyValueStoreByPossibleId(client: MemoryStorage, entryNameOrId: string) {
+    // First check memory cache
+    const found = client.keyValueStoresHandled.find(
+        (store) => store.id === entryNameOrId || store.name?.toLowerCase() === entryNameOrId.toLowerCase(),
+    );
+
+    if (found) {
+        return found;
+    }
+
+    const keyValueStoreDir = resolve(client.keyValueStoresDirectory, entryNameOrId);
+
+    try {
+        // Check if directory exists
+        await access(keyValueStoreDir);
+    } catch {
+        return undefined;
+    }
+
+    // Access the key value store folder
+    const directoryEntries = await opendir(keyValueStoreDir);
+
+    let id: string | undefined;
+    let name: string | undefined;
+    let createdAt = new Date();
+    let accessedAt = new Date();
+    let modifiedAt = new Date();
+
+    type FsRecord = Omit<InternalKeyRecord, 'value'>;
+    const internalRecords = new Map<string, FsRecord>();
+    let hasSeenMetadataForEntry = false;
+
+    for await (const entry of directoryEntries) {
+        if (entry.isFile()) {
+            if (entry.name === '__metadata__.json') {
+                // we have found the store metadata file, build out information based on it
+                const fileContent = await readFile(resolve(keyValueStoreDir, entry.name), 'utf8');
+                if (!fileContent) continue;
+
+                const metadata = JSON.parse(fileContent) as storage.KeyValueStoreInfo;
+                id = metadata.id;
+                name = metadata.name;
+                createdAt = new Date(metadata.createdAt);
+                accessedAt = new Date(metadata.accessedAt);
+                modifiedAt = new Date(metadata.modifiedAt);
+
+                continue;
+            }
+
+            if (entry.name.includes('.__metadata__.')) {
+                hasSeenMetadataForEntry = true;
+
+                // This is an entry's metadata file, we can use it to create/extend the record
+                const fileContent = await readFile(resolve(keyValueStoreDir, entry.name), 'utf8');
+                if (!fileContent) continue;
+
+                const metadata = JSON.parse(fileContent) as FsRecord;
+
+                const newRecord = {
+                    ...internalRecords.get(metadata.key),
+                    ...metadata,
+                } as FsRecord;
+
+                internalRecords.set(metadata.key, newRecord);
+
+                continue;
+            }
+
+            // This is an entry in the store, we can use it to create/extend the record
+            const fileContent = await readFile(resolve(keyValueStoreDir, entry.name));
+            const fileExtension = extname(entry.name);
+            const contentType = mimeTypes.contentType(entry.name) || 'text/plain';
+            const extension = mimeTypes.extension(contentType) as string;
+
+            // This is kept for backwards compatibility / to ignore invalid JSON files
+            if (contentType.includes('application/json')) {
+                const stringifiedJson = fileContent.toString('utf8');
+
+                try {
+                    json5.parse(stringifiedJson);
+                } catch {
+                    memoryStorageLog.warning(
+                        `Key-value entry "${entry.name}" for store ${entryNameOrId} has invalid JSON content and will be ignored from the store.`,
+                    );
+                    continue;
+                }
+            }
+
+            const nameSplit = entry.name.split('.');
+
+            if (fileExtension) {
+                nameSplit.pop();
+            }
+
+            const key = nameSplit.join('.');
+
+            const newRecord = {
+                key,
+                extension,
+                contentType,
+                ...internalRecords.get(key),
+            } satisfies FsRecord;
+
+            internalRecords.set(key, newRecord);
+        }
+    }
+
+    if (id === undefined && name === undefined) {
+        const isUuid = uuidRegex.test(entryNameOrId);
+
+        if (isUuid) {
+            id = entryNameOrId;
+        } else {
+            name = entryNameOrId;
+        }
+    }
+
+    const newClient = new KeyValueStoreClient({
+        baseStorageDirectory: client.keyValueStoresDirectory,
+        client,
+        id,
+        name,
+    });
+
+    // Overwrite properties
+    newClient.accessedAt = accessedAt;
+    newClient.createdAt = createdAt;
+    newClient.modifiedAt = modifiedAt;
+
+    for (const [key, record] of internalRecords) {
+        // We create a file system entry instead of possibly making an in-memory one to allow the pre-included data to be used on demand
+        const entry = new KeyValueFileSystemEntry({
+            persistStorage: true,
+            storeDirectory: keyValueStoreDir,
+            writeMetadata: hasSeenMetadataForEntry,
+        });
+
+        // eslint-disable-next-line dot-notation
+        entry['rawRecord'] = { ...record };
+        // eslint-disable-next-line dot-notation
+        entry['filePath'] = resolve(keyValueStoreDir, `${record.key}.${record.extension}`);
+        // eslint-disable-next-line dot-notation
+        entry['fileMetadataPath'] = resolve(keyValueStoreDir, `${record.key}.__metadata__.json`);
+
+        // eslint-disable-next-line dot-notation
+        newClient['keyValueEntries'].set(key, entry);
+    }
+
+    client.keyValueStoresHandled.push(newClient);
+
+    return newClient;
+}
+
+export async function findRequestQueueByPossibleId(client: MemoryStorage, entryNameOrId: string) {
+    // First check memory cache
+    const found = client.requestQueuesHandled.find(
+        (store) => store.id === entryNameOrId || store.name?.toLowerCase() === entryNameOrId.toLowerCase(),
+    );
+
+    if (found) {
+        return found;
+    }
+
+    const requestQueueDir = resolve(client.requestQueuesDirectory, entryNameOrId);
+
+    try {
+        // Check if directory exists
+        await access(requestQueueDir);
+    } catch {
+        return undefined;
+    }
+
+    // Access the request queue folder
+    const directoryEntries = await opendir(requestQueueDir);
+
+    let id: string | undefined;
+    let name: string | undefined;
+    let createdAt = new Date();
+    let accessedAt = new Date();
+    let modifiedAt = new Date();
+    let pendingRequestCount = 0;
+    let handledRequestCount = 0;
+    const entries = new Set<string>();
+
+    for await (const entry of directoryEntries) {
+        if (entry.isFile()) {
+            switch (entry.name) {
+                case '__metadata__.json': {
+                    // we have found the store metadata file, build out information based on it
+                    const fileContent = await readFile(resolve(requestQueueDir, entry.name), 'utf8');
+                    if (!fileContent) continue;
+
+                    const metadata = JSON.parse(fileContent) as storage.RequestQueueInfo;
+
+                    id = metadata.id;
+                    name = metadata.name;
+                    createdAt = new Date(metadata.createdAt);
+                    accessedAt = new Date(metadata.accessedAt);
+                    modifiedAt = new Date(metadata.modifiedAt);
+                    pendingRequestCount = metadata.pendingRequestCount;
+                    handledRequestCount = metadata.handledRequestCount;
+
+                    break;
+                }
+                default: {
+                    // Skip non-JSON and files that start with a dot
+                    if (entry.name.startsWith('.') || !entry.name.endsWith('.json')) {
+                        continue;
+                    }
+
+                    const entryName = entry.name.split('.')[0];
+
+                    try {
+                        // Try parsing the file to ensure it's even valid to begin with
+                        const fileContent = await readFile(resolve(requestQueueDir, entry.name), 'utf8');
+                        JSON.parse(fileContent);
+
+                        entries.add(entryName);
+                    } catch (err) {
+                        memoryStorageLog.warning(
+                            `Request queue entry "${entry.name}" for store ${entryNameOrId} has invalid JSON content and will be ignored from the store.`,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    if (id === undefined && name === undefined) {
+        const isUuid = uuidRegex.test(entryNameOrId);
+
+        if (isUuid) {
+            id = entryNameOrId;
+        } else {
+            name = entryNameOrId;
+        }
+    }
+
+    const newClient = new RequestQueueClient({
+        baseStorageDirectory: client.requestQueuesDirectory,
+        client,
+        id,
+        name,
+    });
+
+    // Overwrite properties
+    newClient.accessedAt = accessedAt;
+    newClient.createdAt = createdAt;
+    newClient.modifiedAt = modifiedAt;
+    newClient.pendingRequestCount = pendingRequestCount;
+    newClient.handledRequestCount = handledRequestCount;
+
+    for (const requestId of entries) {
+        const entry = new RequestQueueFileSystemEntry({
+            persistStorage: true,
+            requestId,
+            storeDirectory: requestQueueDir,
+        });
+
+        // eslint-disable-next-line dot-notation
+        newClient['requests'].set(requestId, entry);
+    }
+
+    client.requestQueuesHandled.push(newClient);
+
+    return newClient;
+}
+
+/* eslint-disable import/first -- Fixing circulars */
+import { DatasetClient } from './resource-clients/dataset';
+import type { InternalKeyRecord } from './resource-clients/key-value-store';
+import { KeyValueStoreClient } from './resource-clients/key-value-store';
+import { RequestQueueClient } from './resource-clients/request-queue';
+import { memoryStorageLog } from './utils';
+
+
+
+BODY-PARSER.TS
+
+import contentTypeParser from 'content-type';
+import JSON5 from 'json5';
+
+const CONTENT_TYPE_JSON = 'application/json';
+const STRINGIFIABLE_CONTENT_TYPE_RXS = [new RegExp(`^${CONTENT_TYPE_JSON}$`, 'i'), /^application\/.*xml$/i, /^text\//i];
+
+/**
+ * Parses a Buffer or ArrayBuffer using the provided content type header.
+ *
+ * - application/json is returned as a parsed object.
+ * - application/*xml and text/* are returned as strings.
+ * - everything else is returned as original body.
+ *
+ * If the header includes a charset, the body will be stringified only
+ * if the charset represents a known encoding to Node.js or Browser.
+ */
+export function maybeParseBody(
+    body: Buffer | ArrayBuffer,
+    contentTypeHeader: string,
+): string | Buffer | ArrayBuffer | Record<string, unknown> {
+    let contentType: string;
+    let charset: BufferEncoding;
+    try {
+        const result = contentTypeParser.parse(contentTypeHeader);
+        contentType = result.type;
+        charset = result.parameters.charset as BufferEncoding;
+    } catch {
+        // can't parse, keep original body
+        return body;
+    }
+
+    // If we can't successfully parse it, we return
+    // the original buffer rather than a mangled string.
+    if (!areDataStringifiable(contentType, charset)) return body;
+    const dataString = isomorphicBufferToString(body, charset);
+
+    return contentType === CONTENT_TYPE_JSON ? JSON5.parse(dataString) : dataString;
+}
+
+function isomorphicBufferToString(buffer: Buffer | ArrayBuffer, encoding: BufferEncoding): string {
+    if (buffer.constructor.name !== ArrayBuffer.name) {
+        return buffer.toString(encoding);
+    }
+
+    // Browser decoding only works with UTF-8.
+    const utf8decoder = new TextDecoder();
+    return utf8decoder.decode(new Uint8Array(buffer));
+}
+
+function isCharsetStringifiable(charset: string): charset is BufferEncoding {
+    if (!charset) return true; // hope that it's utf-8
+    return Buffer.isEncoding(charset);
+}
+
+function isContentTypeStringifiable(contentType: string): boolean {
+    if (!contentType) return false; // keep buffer
+    return STRINGIFIABLE_CONTENT_TYPE_RXS.some((rx) => rx.test(contentType));
+}
+
+function areDataStringifiable(contentType: string, charset: string): boolean {
+    return isContentTypeStringifiable(contentType) && isCharsetStringifiable(charset);
+}
+
+
+
+FS-UTILS.TS
+
+import { writeFile } from 'node:fs';
+import { writeFile as writeFileP } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
+
+import log from '@apify/log';
+import { ensureDir } from 'fs-extra';
+import { lock } from 'proper-lockfile';
+
+import type { BackgroundHandlerReceivedMessage, BackgroundHandlerUpdateMetadataMessage } from '../utils';
+
+const backgroundHandlerLog = log.child({ prefix: 'MemoryStorageBackgroundHandler' });
+
+export async function handleMessage(message: BackgroundHandlerReceivedMessage) {
+    switch (message.action) {
+        case 'update-metadata':
+            await updateMetadata(message);
+            break;
+        default:
+            // We're keeping this to make eslint happy + in the event we add a new action without adding checks for it
+            // we should be aware of them
+            backgroundHandlerLog.warning(
+                `Unknown background handler message action ${(message as BackgroundHandlerReceivedMessage).action}`,
+            );
+    }
+}
+
+async function updateMetadata(message: BackgroundHandlerUpdateMetadataMessage) {
+    // Skip writing the actual metadata file. This is done after ensuring the directory exists so we have the directory present
+    if (!message.writeMetadata) {
+        return;
+    }
+
+    // Ensure the directory for the entity exists
+    const dir = message.entityDirectory;
+    await ensureDir(dir);
+
+    // Write the metadata to the file
+    const filePath = resolve(dir, '__metadata__.json');
+    await writeFileP(filePath, JSON.stringify(message.data, null, '\t'));
+}
+
+export async function lockAndWrite(
+    filePath: string,
+    data: unknown,
+    stringify = true,
+    retry = 10,
+    timeout = 10,
+): Promise<void> {
+    await lockAndCallback(
+        filePath,
+        async () => {
+            await new Promise<void>((pResolve, reject) => {
+                writeFile(filePath, stringify ? JSON.stringify(data, null, '\t') : (data as Buffer), (err) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        pResolve();
+                    }
+                });
+            });
+        },
+        retry,
+        timeout,
+    );
+}
+
+export async function lockAndCallback<Callback extends () => Promise<any>>(
+    filePath: string,
+    callback: Callback,
+    retry = 10,
+    timeout = 10,
+): Promise<Awaited<ReturnType<Callback>>> {
+    let release: (() => Promise<void>) | null = null;
+    try {
+        release = await lock(filePath, { realpath: false });
+
+        return await callback();
+    } catch (e: any) {
+        if (e.code === 'ELOCKED' && retry > 0) {
+            await setTimeout(timeout);
+            return lockAndCallback(filePath, callback, retry - 1, timeout * 2);
+        }
+
+        throw e;
+    } finally {
+        if (release) {
+            await release();
+        }
+    }
+}
+
+
+
+INDEX.TS
+
+import { randomUUID } from 'node:crypto';
+
+import { handleMessage } from './fs-utils';
+import type { BackgroundHandlerReceivedMessage } from '../utils';
+
+/**
+ * A map of promises that are created when a background task is scheduled.
+ * This is used in MemoryStorage#teardown to wait for all tasks to finish executing before exiting the process.
+ * @internal
+ */
+export const promiseMap: Map<
+    string,
+    {
+        promise: Promise<void>;
+        resolve: () => void;
+    }
+> = new Map();
+
+export function scheduleBackgroundTask(message: BackgroundHandlerReceivedMessage) {
+    const id = randomUUID();
+
+    let promiseResolve: () => void;
+    const promise = new Promise<void>((res) => {
+        promiseResolve = res;
+    });
+
+    promiseMap.set(id, {
+        promise,
+        resolve: promiseResolve!,
+    });
+
+    void handleBackgroundMessage({
+        ...message,
+        messageId: id,
+    });
+}
+
+async function handleBackgroundMessage(message: BackgroundHandlerReceivedMessage & { messageId: string }) {
+    await handleMessage(message);
+
+    promiseMap.get(message.messageId)?.resolve();
+    promiseMap.delete(message.messageId);
+}
+
+
+
+INDEX.TS
+
+export * from './memory-storage';
+
+
+
+NO-WRITING-TO-DISK.TEST.TS
+
+import { readdir, rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+
+import { waitTillWrittenToDisk } from './__shared__';
+
+describe('persistStorage option', () => {
+    const tmpLocation = resolve(__dirname, './tmp/no-writing-to-disk');
+
+    afterAll(async () => {
+        await rm(tmpLocation, { force: true, recursive: true });
+    });
+
+    describe('when false and writeMetadata is also false', () => {
+        const localDataDirectory = resolve(tmpLocation, './no-metadata');
+        const storage = new MemoryStorage({
+            localDataDirectory,
+            persistStorage: false,
+        });
+
+        test('creating a key-value pair in a key-value store should not write data to the disk', async () => {
+            const keyValueStoreInfo = await storage.keyValueStores().getOrCreate();
+
+            const keyValueStore = storage.keyValueStore(keyValueStoreInfo.id);
+            await keyValueStore.setRecord({ key: 'foo', value: 'test' });
+
+            // We check that reading the directory for the store throws an error, which means it wasn't created on disk
+            await expect(async () => readdir(localDataDirectory)).rejects.toThrow();
+        });
+    });
+
+    describe('when false and writeMetadata is true', () => {
+        const localDataDirectory = resolve(tmpLocation, './with-metadata');
+        const storage = new MemoryStorage({
+            localDataDirectory,
+            persistStorage: false,
+            writeMetadata: true,
+        });
+
+        test('creating a key-value pair in a key-value store should not write data to the disk, but it should write the __metadata__ file', async () => {
+            const keyValueStoreInfo = await storage.keyValueStores().getOrCreate();
+
+            const keyValueStore = storage.keyValueStore(keyValueStoreInfo.id);
+            await keyValueStore.setRecord({ key: 'foo', value: 'test' });
+
+            const storePath = resolve(storage.keyValueStoresDirectory, `${keyValueStoreInfo.id}`);
+
+            await waitTillWrittenToDisk(storePath);
+
+            const directoryFiles = await readdir(storePath);
+
+            expect(directoryFiles).toHaveLength(1);
+            expect(directoryFiles).toEqual(['__metadata__.json']);
+        });
+    });
+});
+
+
+
+REVERSE-DATATASET-LIST.TEST.TS
+
+import { rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+import type { DatasetClient } from '@crawlee/types';
+
+const elements = Array.from({ length: 10 }, (_, i) => ({ number: i }));
+
+describe('Dataset#listItems respects the desc option', () => {
+    const localDataDirectory = resolve(__dirname, './tmp/desc');
+    const storage = new MemoryStorage({
+        localDataDirectory,
+        persistStorage: false,
+    });
+
+    let dataset: DatasetClient;
+
+    afterAll(async () => {
+        await rm(localDataDirectory, { force: true, recursive: true });
+    });
+
+    beforeAll(async () => {
+        const { id: falseDatasetId } = await storage.datasets().getOrCreate('false');
+        dataset = storage.dataset(falseDatasetId);
+
+        await dataset.pushItems(elements);
+    });
+
+    test('with desc: false', async () => {
+        const result = await dataset.listItems({ desc: false, limit: 5 });
+
+        expect(result.items).toHaveLength(5);
+        expect(result.items).toStrictEqual(elements.slice(0, 5));
+    });
+
+    test('with desc: true', async () => {
+        const result = await dataset.listItems({ desc: true, limit: 5 });
+
+        expect(result.items).toHaveLength(5);
+        expect(result.items).toStrictEqual(elements.slice().reverse().slice(0, 5));
+    });
+
+    test('with desc: false and offset: 2', async () => {
+        const result = await dataset.listItems({ desc: false, limit: 5, offset: 2 });
+
+        expect(result.items).toHaveLength(5);
+        expect(result.items).toStrictEqual(elements.slice(2, 7));
+    });
+
+    test('with desc: true and offset: 2', async () => {
+        const result = await dataset.listItems({ desc: true, limit: 5, offset: 2 });
+
+        expect(result.items).toHaveLength(5);
+        expect(result.items).toStrictEqual(elements.slice().reverse().slice(2, 7));
+    });
+});
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "../../../tsconfig.json",
+	"include": ["**/*", "../../**/*"],
+	"compilerOptions": {
+		"types": ["vitest/globals"]
+	}
+}
+
+
+
+FS-FALLBACK.TEST.TS
+
+import { randomUUID } from 'node:crypto';
+import { rm, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+import type { KeyValueStoreRecord } from '@crawlee/types';
+import { ensureDir } from 'fs-extra';
+
+describe('fallback to fs for reading', () => {
+    const tmpLocation = resolve(__dirname, './tmp/fs-fallback');
+    const storage = new MemoryStorage({
+        localDataDirectory: tmpLocation,
+    });
+
+    const expectedFsDate = new Date(2022, 0, 1);
+
+    beforeAll(async () => {
+        // Create "default" key-value store and give it an entry
+        await ensureDir(resolve(storage.keyValueStoresDirectory, 'default'));
+        await writeFile(
+            resolve(storage.keyValueStoresDirectory, 'default/__metadata__.json'),
+            JSON.stringify({
+                id: randomUUID(),
+                name: 'default',
+                createdAt: expectedFsDate,
+                accessedAt: expectedFsDate,
+                modifiedAt: expectedFsDate,
+            }),
+        );
+        await writeFile(
+            resolve(storage.keyValueStoresDirectory, 'default/INPUT.json'),
+            JSON.stringify({ foo: 'bar but from fs' }),
+        );
+
+        await ensureDir(resolve(storage.keyValueStoresDirectory, 'other'));
+        await writeFile(
+            resolve(storage.keyValueStoresDirectory, 'other/INPUT.json'),
+            JSON.stringify({ foo: 'bar but from fs' }),
+        );
+
+        await ensureDir(resolve(storage.keyValueStoresDirectory, 'no-ext'));
+        await writeFile(
+            resolve(storage.keyValueStoresDirectory, 'no-ext/INPUT'),
+            JSON.stringify({ foo: 'bar but from fs' }),
+        );
+
+        await ensureDir(resolve(storage.keyValueStoresDirectory, 'invalid-json'));
+        await writeFile(resolve(storage.keyValueStoresDirectory, 'invalid-json/INPUT.json'), '{');
+    });
+
+    afterAll(async () => {
+        await rm(tmpLocation, { force: true, recursive: true });
+    });
+
+    // POST INIT //
+
+    test('attempting to read "default" key value store with "__metadata__" present should read from fs', async () => {
+        const defaultStoreInfo = await storage.keyValueStores().getOrCreate('default');
+        const defaultStore = storage.keyValueStore(defaultStoreInfo.id);
+
+        expect(defaultStoreInfo.name).toEqual('default');
+        expect(defaultStoreInfo.createdAt).toEqual(expectedFsDate);
+
+        const input = await defaultStore.getRecord('INPUT');
+        expect(input).toStrictEqual<KeyValueStoreRecord>({
+            key: 'INPUT',
+            value: { foo: 'bar but from fs' },
+            contentType: 'application/json; charset=utf-8',
+        });
+    });
+
+    test('attempting to read "other" key value store with no "__metadata__" present should read from fs, even if accessed without generating id first', async () => {
+        const otherStore = storage.keyValueStore('other');
+
+        const input = await otherStore.getRecord('INPUT');
+        expect(input).toStrictEqual<KeyValueStoreRecord>({
+            key: 'INPUT',
+            value: { foo: 'bar but from fs' },
+            contentType: 'application/json; charset=utf-8',
+        });
+    });
+
+    test('attempting to read non-existent "default_2" key value store should return undefined', async () => {
+        await expect(storage.keyValueStore('default_2').get()).resolves.toBeUndefined();
+    });
+
+    test('attempting to read "no-ext" key value store should load the missing extension file correctly', async () => {
+        const noExtStore = storage.keyValueStore('no-ext');
+
+        const input = await noExtStore.getRecord('INPUT');
+        expect(input).toStrictEqual<KeyValueStoreRecord>({
+            key: 'INPUT',
+            value: JSON.stringify({ foo: 'bar but from fs' }),
+            contentType: 'text/plain',
+        });
+    });
+
+    test('attempting to read "invalid-json" key value store should ignore the invalid "INPUT" json file', async () => {
+        const invalidJsonStore = storage.keyValueStore('invalid-json');
+
+        const input = await invalidJsonStore.getRecord('INPUT');
+        expect(input).toBeUndefined();
+    });
+});
+
+
+
+WITH-EXTENSION.TEST.TS
+
+import { resolve } from 'node:path';
+
+import { existsSync, emptyDirSync } from 'fs-extra';
+import { createKeyValueStorageImplementation } from 'packages/memory-storage/src/fs/key-value-store';
+
+describe('KeyValueStore should append extension only when needed', () => {
+    const mockImageBuffer = Buffer.from('This is a test image', 'utf8');
+
+    afterAll(() => emptyDirSync('tmp'));
+
+    test('should append extension when needed (jpg)', async () => {
+        const testDir = resolve('tmp', 'test_no_extension');
+        const storage = createKeyValueStorageImplementation({
+            persistStorage: true,
+            storeDirectory: testDir,
+            writeMetadata: true,
+        });
+        await storage.update({
+            key: 'jibberish',
+            value: mockImageBuffer,
+            contentType: 'image/jpeg',
+            extension: 'jpeg',
+        });
+
+        expect(existsSync(resolve(testDir, 'jibberish.jpeg'))).toBeTruthy();
+        expect(existsSync(resolve(testDir, 'jibberish'))).toBeFalsy();
+    });
+
+    test('should append extension when needed (html)', async () => {
+        const testDir = resolve('tmp', 'test_no_extension');
+        const storage = createKeyValueStorageImplementation({
+            persistStorage: true,
+            storeDirectory: testDir,
+            writeMetadata: true,
+        });
+        await storage.update({
+            key: 'jibberish2',
+            value: '<html lang="en"><body>Hi there!</body></html>',
+            contentType: 'text/html',
+            extension: 'html',
+        });
+
+        expect(existsSync(resolve(testDir, 'jibberish2.html'))).toBeTruthy();
+        expect(existsSync(resolve(testDir, 'jibberish2'))).toBeFalsy();
+    });
+
+    test('should not append extension when already available', async () => {
+        const testDir = resolve('tmp', 'test_extension');
+        const storage = createKeyValueStorageImplementation({
+            persistStorage: true,
+            storeDirectory: testDir,
+            writeMetadata: true,
+        });
+        await storage.update({
+            key: 'jibberish.jpg',
+            value: mockImageBuffer,
+            contentType: 'image/jpeg',
+            extension: 'jpeg',
+        });
+
+        expect(existsSync(resolve(testDir, 'jibberish.jpg'))).toBeTruthy();
+        expect(existsSync(resolve(testDir, 'jibberish.jpg.jpeg'))).toBeFalsy();
+    });
+
+    test('should not append extension when already available', async () => {
+        const testDir = resolve('tmp', 'test_extension');
+        const storage = createKeyValueStorageImplementation({
+            persistStorage: true,
+            storeDirectory: testDir,
+            writeMetadata: true,
+        });
+        await storage.update({
+            key: 'jibberish2.html',
+            value: '<html lang="en"><body>Hi there!</body></html>',
+            contentType: 'text/html',
+            extension: 'html',
+        });
+
+        expect(existsSync(resolve(testDir, 'jibberish2.html'))).toBeTruthy();
+        expect(existsSync(resolve(testDir, 'jibberish2.html.html'))).toBeFalsy();
+    });
+});
+
+
+
+STREAM.TEST.TS
+
+import { Readable } from 'node:stream';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+
+describe('KeyValueStore should drain streams when setting records', () => {
+    const storage = new MemoryStorage({
+        persistStorage: false,
+    });
+
+    const fsStream = Readable.from([Buffer.from('hello'), Buffer.from('world')]);
+
+    test('should drain stream', async () => {
+        const defaultStoreInfo = await storage.keyValueStores().getOrCreate('default');
+        const defaultStore = storage.keyValueStore(defaultStoreInfo.id);
+
+        await defaultStore.setRecord({ key: 'streamz', value: fsStream, contentType: 'text/plain' });
+
+        expect(fsStream.destroyed).toBeTruthy();
+
+        const record = await defaultStore.getRecord('streamz');
+        expect(record!.value.toString('utf8')).toEqual('helloworld');
+    });
+});
+
+
+
+HANDLEDREQUESTCOUNT-SHOULD-UPDATE.TEST.TS
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+import type { RequestQueueClient } from '@crawlee/types';
+
+describe('RequestQueue handledRequestCount should update', () => {
+    const storage = new MemoryStorage({
+        persistStorage: false,
+    });
+
+    let requestQueue: RequestQueueClient;
+
+    beforeAll(async () => {
+        const { id } = await storage.requestQueues().getOrCreate('handledRequestCount');
+        requestQueue = storage.requestQueue(id);
+    });
+
+    test('after updating the request, it should increment the handledRequestCount', async () => {
+        const { requestId } = await requestQueue.addRequest({ url: 'http://example.com/1', uniqueKey: '1' });
+
+        await requestQueue.updateRequest({
+            url: 'http://example.com/1',
+            uniqueKey: '1',
+            id: requestId,
+            handledAt: new Date().toISOString(),
+        });
+
+        const updatedStatistics = await requestQueue.get();
+        expect(updatedStatistics?.handledRequestCount).toEqual(1);
+    });
+
+    test('adding an already handled request should increment the handledRequestCount', async () => {
+        await requestQueue.addRequest({
+            url: 'http://example.com/2',
+            uniqueKey: '2',
+            handledAt: new Date().toISOString(),
+        });
+
+        const updatedStatistics = await requestQueue.get();
+        expect(updatedStatistics?.handledRequestCount).toEqual(2);
+    });
+
+    test('deleting a request should decrement the handledRequestCount', async () => {
+        const { requestId } = await requestQueue.addRequest({
+            url: 'http://example.com/3',
+            uniqueKey: '3',
+            handledAt: new Date().toISOString(),
+        });
+
+        await requestQueue.deleteRequest(requestId);
+
+        const updatedStatistics = await requestQueue.get();
+        expect(updatedStatistics?.handledRequestCount).toEqual(2);
+    });
+});
+
+
+
+IGNORE-NON-JSON-FILES.TEST.TS
+
+import { randomUUID } from 'node:crypto';
+import { rm, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+import type { InternalRequest } from '@crawlee/memory-storage/src/resource-clients/request-queue';
+import type { RequestSchema } from '@crawlee/types';
+import { ensureDir } from 'fs-extra';
+
+describe('when falling back to fs, Request queue should ignore non-JSON files', () => {
+    const tmpLocation = resolve(__dirname, './tmp/req-queue-ignore-non-json');
+    const storage = new MemoryStorage({
+        localDataDirectory: tmpLocation,
+    });
+
+    beforeAll(async () => {
+        // Create "default" request queue and give it faulty entries
+        await ensureDir(resolve(storage.requestQueuesDirectory, 'default'));
+        await writeFile(
+            resolve(storage.requestQueuesDirectory, 'default/__metadata__.json'),
+            JSON.stringify({
+                id: randomUUID(),
+                name: 'default',
+                createdAt: new Date(2022, 0, 1),
+                accessedAt: new Date(2022, 0, 1),
+                modifiedAt: new Date(2022, 0, 1),
+            }),
+        );
+
+        await writeFile(
+            resolve(storage.requestQueuesDirectory, 'default/123.json'),
+            JSON.stringify({
+                id: '123',
+                orderNo: 1,
+                url: 'http://example.com',
+                uniqueKey: 'owo',
+                method: 'GET',
+                retryCount: 0,
+                json: JSON.stringify({
+                    uniqueKey: 'owo',
+                    url: 'http://example.com',
+                    id: '123',
+                } satisfies RequestSchema),
+            } satisfies InternalRequest),
+        );
+
+        await writeFile(resolve(storage.requestQueuesDirectory, 'default/.DS_Store'), 'owo');
+        await writeFile(resolve(storage.requestQueuesDirectory, 'default/invalid.txt'), 'owo');
+    });
+
+    afterAll(async () => {
+        await rm(tmpLocation, { force: true, recursive: true });
+    });
+
+    test('attempting to list "default" request queue should ignore non-JSON files', async () => {
+        const defaultQueueInfo = await storage.requestQueues().getOrCreate('default');
+        const defaultQueue = storage.requestQueue(defaultQueueInfo.id);
+
+        expect(defaultQueueInfo.name).toEqual('default');
+
+        const requests = await defaultQueue.listHead();
+        expect(requests.items).toHaveLength(1);
+    });
+});
+
+
+
+FOREFRONT.TEST.TS
+
+import { setTimeout as sleep } from 'node:timers/promises';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+import type { RequestQueueClient } from '@crawlee/types';
+
+describe('RequestQueue forefront should be respected when listing head', () => {
+    const storage = new MemoryStorage({
+        persistStorage: false,
+    });
+
+    let requestQueue: RequestQueueClient;
+
+    beforeEach(async () => {
+        const { id } = await storage.requestQueues().getOrCreate('forefront');
+        requestQueue = storage.requestQueue(id);
+    });
+
+    afterEach(async () => {
+        await requestQueue.delete();
+    });
+
+    test('adding two requests without one being in the forefront should be added in sequential order', async () => {
+        await requestQueue.addRequest({ url: 'http://example.com/1', uniqueKey: '1' });
+        // Waiting a few ms is required since we use Date.now() to compute orderNo
+        await sleep(2);
+        await requestQueue.addRequest({ url: 'http://example.com/2', uniqueKey: '2' });
+
+        const { items } = await requestQueue.listHead();
+
+        expect(items).toHaveLength(2);
+        expect(items[0].url).toBe('http://example.com/1');
+        expect(items[1].url).toBe('http://example.com/2');
+    });
+
+    test('adding two requests with one being in the forefront should ensure the forefront request is first', async () => {
+        await requestQueue.addRequest({ url: 'http://example.com/1', uniqueKey: '1' });
+        // Waiting a few ms is required since we use Date.now() to compute orderNo
+        await sleep(2);
+        await requestQueue.addRequest({ url: 'http://example.com/2', uniqueKey: '2' }, { forefront: true });
+
+        const { items } = await requestQueue.listHead();
+
+        expect(items).toHaveLength(2);
+        expect(items[0].url).toBe('http://example.com/2');
+        expect(items[1].url).toBe('http://example.com/1');
+    });
+
+    test('adding two requests where both are in the forefront should ensure the latest one is added first', async () => {
+        await requestQueue.addRequest({ url: 'http://example.com/1', uniqueKey: '1' }, { forefront: true });
+        // Waiting a few ms is required since we use Date.now() to compute orderNo
+        await sleep(2);
+        await requestQueue.addRequest({ url: 'http://example.com/2', uniqueKey: '2' }, { forefront: true });
+
+        const { items } = await requestQueue.listHead();
+
+        expect(items).toHaveLength(2);
+        expect(items[0].url).toBe('http://example.com/2');
+        expect(items[1].url).toBe('http://example.com/1');
+    });
+});
+
+
+
+__SHARED__.TS
+
+import { access } from 'node:fs/promises';
+import { setTimeout } from 'node:timers/promises';
+
+export async function waitTillWrittenToDisk(path: string): Promise<void> {
+    try {
+        await access(path);
+    } catch {
+        await setTimeout(50);
+        return waitTillWrittenToDisk(path);
+    }
+}
+
+
+
+WRITE-METADATA.TEST.TS
+
+import { readdir, rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+
+import { waitTillWrittenToDisk } from './__shared__';
+
+describe('writeMetadata option', () => {
+    const tmpLocation = resolve(__dirname, './tmp/write-metadata-tests');
+
+    afterAll(async () => {
+        await rm(tmpLocation, { force: true, recursive: true });
+    });
+
+    describe('when false', () => {
+        const localDataDirectory = resolve(tmpLocation, './no-metadata');
+        const storage = new MemoryStorage({
+            localDataDirectory,
+            writeMetadata: false,
+        });
+
+        test('creating a data store should not write __metadata__.json file', async () => {
+            const keyValueStore = await storage.keyValueStores().getOrCreate();
+            const expectedPath = resolve(storage.keyValueStoresDirectory, `${keyValueStore.id}`);
+
+            // We check that reading the directory for the store throws an error, which means it wasn't created on disk
+            await expect(async () => readdir(expectedPath)).rejects.toThrow();
+        });
+
+        test('creating a key-value pair in a key-value store should not write __metadata__.json file for the value', async () => {
+            const keyValueStoreInfo = await storage.keyValueStores().getOrCreate();
+
+            const keyValueStore = storage.keyValueStore(keyValueStoreInfo.id);
+            await keyValueStore.setRecord({ key: 'foo', value: 'test' });
+
+            const expectedFilePath = resolve(storage.keyValueStoresDirectory, `${keyValueStoreInfo.id}/foo.txt`);
+            await waitTillWrittenToDisk(expectedFilePath);
+
+            const directoryFiles = await readdir(resolve(storage.keyValueStoresDirectory, `${keyValueStoreInfo.id}`));
+
+            expect(directoryFiles).toHaveLength(1);
+        });
+    });
+
+    describe('when true', () => {
+        const localDataDirectory = resolve(tmpLocation, './metadata');
+        const storage = new MemoryStorage({
+            localDataDirectory,
+            writeMetadata: true,
+        });
+
+        test('creating a data store should write __metadata__.json file', async () => {
+            const keyValueStore = await storage.keyValueStores().getOrCreate();
+            const expectedPath = resolve(storage.keyValueStoresDirectory, `${keyValueStore.id}`);
+            await waitTillWrittenToDisk(expectedPath);
+
+            const directoryFiles = await readdir(expectedPath);
+
+            expect(directoryFiles).toHaveLength(1);
+        });
+
+        test('creating a key-value pair in a key-value store should write __metadata__.json file for the value', async () => {
+            const keyValueStoreInfo = await storage.keyValueStores().getOrCreate();
+
+            const keyValueStore = storage.keyValueStore(keyValueStoreInfo.id);
+            await keyValueStore.setRecord({ key: 'foo', value: 'test' });
+
+            const expectedFilePath = resolve(storage.keyValueStoresDirectory, `${keyValueStoreInfo.id}/foo.txt`);
+            const expectedMetadataPath = resolve(
+                storage.keyValueStoresDirectory,
+                `${keyValueStoreInfo.id}/foo.__metadata__.json`,
+            );
+            await Promise.all([waitTillWrittenToDisk(expectedFilePath), waitTillWrittenToDisk(expectedMetadataPath)]);
+
+            const directoryFiles = await readdir(resolve(storage.keyValueStoresDirectory, `${keyValueStoreInfo.id}`));
+
+            expect(directoryFiles).toHaveLength(3);
+        });
+    });
+});
+
+
+
+NO-CRASH-ON-BIG-BUFFERS.TEST.TS
+
+// https://github.com/apify/crawlee/issues/1732
+// https://github.com/apify/crawlee/issues/1710
+
+import { rm } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+import { MemoryStorage } from '@crawlee/memory-storage';
+import type { KeyValueStoreClient, KeyValueStoreInfo } from '@crawlee/types';
+
+describe('MemoryStorage should not crash when saving a big buffer', () => {
+    const tmpLocation = resolve(__dirname, './tmp/no-buffer-crash');
+    const storage = new MemoryStorage({
+        localDataDirectory: tmpLocation,
+        persistStorage: false,
+    });
+
+    let kvs: KeyValueStoreInfo;
+    let store: KeyValueStoreClient;
+
+    beforeAll(async () => {
+        kvs = await storage.keyValueStores().getOrCreate();
+        store = storage.keyValueStore(kvs.id);
+    });
+
+    afterAll(async () => {
+        await rm(tmpLocation, { force: true, recursive: true });
+    });
+
+    test('should not crash when saving a big buffer', async () => {
+        let zip: Buffer;
+
+        if (process.env.CRAWLEE_DIFFICULT_TESTS) {
+            const numbers = Array.from([...Array(18_100_000).keys()].map((i) => i * 3_000_000));
+
+            zip = Buffer.from([...numbers]);
+        } else {
+            zip = Buffer.from([...Array(100_000)].map((i) => i * 8));
+        }
+
+        try {
+            await store.setRecord({ key: 'owo.zip', value: zip });
+        } catch (err) {
+            expect(err).not.toBeDefined();
+        }
+    });
+});
+
+
+
+CHANGELOG.MD
+
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## [3.10.4](https://github.com/apify/crawlee/compare/v3.10.3...v3.10.4) (2024-06-11)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.10.3](https://github.com/apify/crawlee/compare/v3.10.2...v3.10.3) (2024-06-07)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.10.2](https://github.com/apify/crawlee/compare/v3.10.1...v3.10.2) (2024-06-03)
+
+
+### Bug Fixes
+
+* improve fix for double extension in KVS with HTML files ([#2505](https://github.com/apify/crawlee/issues/2505)) ([157927d](https://github.com/apify/crawlee/commit/157927d67f42342c20fdf01ef81bdafd7095f0b8)), closes [#2419](https://github.com/apify/crawlee/issues/2419)
+
+
+
+
+
+## [3.10.1](https://github.com/apify/crawlee/compare/v3.10.0...v3.10.1) (2024-05-23)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.10.0](https://github.com/apify/crawlee/compare/v3.9.2...v3.10.0) (2024-05-16)
+
+
+### Bug Fixes
+
+* Fixed double extension for screenshots ([#2419](https://github.com/apify/crawlee/issues/2419)) ([e8b39c4](https://github.com/apify/crawlee/commit/e8b39c41764726280c995e52fa7d79a9240d993e)), closes [#1980](https://github.com/apify/crawlee/issues/1980)
+
+
+
+
+
+## [3.9.2](https://github.com/apify/crawlee/compare/v3.9.1...v3.9.2) (2024-04-17)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.9.1](https://github.com/apify/crawlee/compare/v3.9.0...v3.9.1) (2024-04-11)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.9.0](https://github.com/apify/crawlee/compare/v3.8.2...v3.9.0) (2024-04-10)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.8.2](https://github.com/apify/crawlee/compare/v3.8.1...v3.8.2) (2024-03-21)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.8.1](https://github.com/apify/crawlee/compare/v3.8.0...v3.8.1) (2024-02-22)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.8.0](https://github.com/apify/crawlee/compare/v3.7.3...v3.8.0) (2024-02-21)
+
+
+### Features
+
+* `KeyValueStore.recordExists()` ([#2339](https://github.com/apify/crawlee/issues/2339)) ([8507a65](https://github.com/apify/crawlee/commit/8507a65d1ad079f64c752a6ddb1d8fac9b494228))
+
+
+
+
+
+## [3.7.3](https://github.com/apify/crawlee/compare/v3.7.2...v3.7.3) (2024-01-30)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.7.2](https://github.com/apify/crawlee/compare/v3.7.1...v3.7.2) (2024-01-09)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.7.1](https://github.com/apify/crawlee/compare/v3.7.0...v3.7.1) (2024-01-02)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.7.0](https://github.com/apify/crawlee/compare/v3.6.2...v3.7.0) (2023-12-21)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** lock request JSON file when reading to support multiple process crawling ([#2215](https://github.com/apify/crawlee/issues/2215)) ([eb84ce9](https://github.com/apify/crawlee/commit/eb84ce9ce5540b72d5799b1f66c80938d57bc1cc))
+
+
+
+
+
+## [3.6.2](https://github.com/apify/crawlee/compare/v3.6.1...v3.6.2) (2023-11-26)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.6.1](https://github.com/apify/crawlee/compare/v3.6.0...v3.6.1) (2023-11-15)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.6.0](https://github.com/apify/crawlee/compare/v3.5.8...v3.6.0) (2023-11-15)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.5.8](https://github.com/apify/crawlee/compare/v3.5.7...v3.5.8) (2023-10-17)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** ignore invalid files for request queues ([#2132](https://github.com/apify/crawlee/issues/2132)) ([fa58581](https://github.com/apify/crawlee/commit/fa58581b530ef3ad89bdd71403df2d2e4f06c59f)), closes [#1985](https://github.com/apify/crawlee/issues/1985)
+
+
+
+
+
+## [3.5.7](https://github.com/apify/crawlee/compare/v3.5.6...v3.5.7) (2023-10-05)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.5.6](https://github.com/apify/crawlee/compare/v3.5.5...v3.5.6) (2023-10-04)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.5.5](https://github.com/apify/crawlee/compare/v3.5.4...v3.5.5) (2023-10-02)
+
+
+### Features
+
+* Request Queue v2 ([#1975](https://github.com/apify/crawlee/issues/1975)) ([70a77ee](https://github.com/apify/crawlee/commit/70a77ee15f984e9ae67cd584fc58ace7e55346db)), closes [#1365](https://github.com/apify/crawlee/issues/1365)
+
+
+
+
+
+## [3.5.4](https://github.com/apify/crawlee/compare/v3.5.3...v3.5.4) (2023-09-11)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.5.3](https://github.com/apify/crawlee/compare/v3.5.2...v3.5.3) (2023-08-31)
+
+
+### Bug Fixes
+
+* pin all internal dependencies ([#2041](https://github.com/apify/crawlee/issues/2041)) ([d6f2b17](https://github.com/apify/crawlee/commit/d6f2b172d4a6776137c7893ca798d5b4a9408e79)), closes [#2040](https://github.com/apify/crawlee/issues/2040)
+
+
+
+
+
+## [3.5.2](https://github.com/apify/crawlee/compare/v3.5.1...v3.5.2) (2023-08-21)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.5.1](https://github.com/apify/crawlee/compare/v3.5.0...v3.5.1) (2023-08-16)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.5.0](https://github.com/apify/crawlee/compare/v3.4.2...v3.5.0) (2023-07-31)
+
+
+### Bug Fixes
+
+* cleanup worker stuff from memory storage to fix `vitest` ([#2004](https://github.com/apify/crawlee/issues/2004)) ([d2e098c](https://github.com/apify/crawlee/commit/d2e098cab62c700a5c58fcf43a5bcf9f492d71ec)), closes [#1999](https://github.com/apify/crawlee/issues/1999)
+
+
+
+
+
+## [3.4.2](https://github.com/apify/crawlee/compare/v3.4.1...v3.4.2) (2023-07-19)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.4.1](https://github.com/apify/crawlee/compare/v3.4.0...v3.4.1) (2023-07-13)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.4.0](https://github.com/apify/crawlee/compare/v3.3.3...v3.4.0) (2023-06-12)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.3.3](https://github.com/apify/crawlee/compare/v3.3.2...v3.3.3) (2023-05-31)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** handle EXDEV errors when purging storages ([#1932](https://github.com/apify/crawlee/issues/1932)) ([e656050](https://github.com/apify/crawlee/commit/e6560507243f5e2d0b126160616573f13e5998e1))
+
+
+
+
+
+## [3.3.2](https://github.com/apify/crawlee/compare/v3.3.1...v3.3.2) (2023-05-11)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** cache requests in `RequestQueue` ([#1899](https://github.com/apify/crawlee/issues/1899)) ([063dcd1](https://github.com/apify/crawlee/commit/063dcd1c9e6652cd316cc0e8c4f4e4bbb70c246e))
+
+
+### Features
+
+* RQv2 memory storage support ([#1874](https://github.com/apify/crawlee/issues/1874)) ([049486b](https://github.com/apify/crawlee/commit/049486b772cc2accd2d2d226d8c8726e5ab933a9))
+
+
+
+
+
+## [3.3.1](https://github.com/apify/crawlee/compare/v3.3.0...v3.3.1) (2023-04-11)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** handling of readable streams for key-value stores when setting records ([#1852](https://github.com/apify/crawlee/issues/1852)) ([a5ee37d](https://github.com/apify/crawlee/commit/a5ee37d7e245f004785fc03220e37aeafdfa0e81)), closes [#1843](https://github.com/apify/crawlee/issues/1843)
+
+
+
+
+
+# [3.3.0](https://github.com/apify/crawlee/compare/v3.2.2...v3.3.0) (2023-03-09)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** request queues race conditions causing crashes ([#1806](https://github.com/apify/crawlee/issues/1806)) ([083a9db](https://github.com/apify/crawlee/commit/083a9db9ebcddd3fa886631234c790d4c5bcdf86)), closes [#1792](https://github.com/apify/crawlee/issues/1792)
+* **MemoryStorage:** RequestQueue should respect `forefront` ([#1816](https://github.com/apify/crawlee/issues/1816)) ([b68e86a](https://github.com/apify/crawlee/commit/b68e86a97954bcbe30fde802fed5f263016fffe2)), closes [#1787](https://github.com/apify/crawlee/issues/1787)
+* **MemoryStorage:** RequestQueue#handledRequestCount should update ([#1817](https://github.com/apify/crawlee/issues/1817)) ([a775e4a](https://github.com/apify/crawlee/commit/a775e4afea20d0b31492f44b90f61b6a903491b6)), closes [#1764](https://github.com/apify/crawlee/issues/1764)
+
+
+### Features
+
+* add basic support for `setStatusMessage` ([#1790](https://github.com/apify/crawlee/issues/1790)) ([c318980](https://github.com/apify/crawlee/commit/c318980ec11d211b1a5c9e6bdbe76198c5d895be))
+* move the status message implementation to Crawlee, noop in storage ([#1808](https://github.com/apify/crawlee/issues/1808)) ([99c3fdc](https://github.com/apify/crawlee/commit/99c3fdc18030b7898e6b6d149d6d94fab7881f09))
+
+
+
+
+
+## [3.2.2](https://github.com/apify/crawlee/compare/v3.2.1...v3.2.2) (2023-02-08)
+
+
+### Bug Fixes
+
+* **MemoryStorage:** request queues saved in the wrong place ([#1779](https://github.com/apify/crawlee/issues/1779)) ([19409db](https://github.com/apify/crawlee/commit/19409dbd614560a73c97ef6e00997e482573d2ff))
+
+
+
+
+
+## [3.2.1](https://github.com/apify/crawlee/compare/v3.2.0...v3.2.1) (2023-02-07)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# [3.2.0](https://github.com/apify/crawlee/compare/v3.1.4...v3.2.0) (2023-02-07)
+
+
+### Bug Fixes
+
+* Correctly compute `pendingRequestCount` in request queue ([#1765](https://github.com/apify/crawlee/issues/1765)) ([946535f](https://github.com/apify/crawlee/commit/946535f2338086e13c71ff70129e7a1f6bfd275d)), closes [/github.com/apify/crawlee/blob/master/packages/memory-storage/src/resource-clients/request-queue.ts#L291-L298](https://github.com//github.com/apify/crawlee/blob/master/packages/memory-storage/src/resource-clients/request-queue.ts/issues/L291-L298)
+* **KeyValueStore:** big buffers should not crash ([#1734](https://github.com/apify/crawlee/issues/1734)) ([2f682f7](https://github.com/apify/crawlee/commit/2f682f7ddd189cad11a3f5e7655ac6243444ff74)), closes [#1732](https://github.com/apify/crawlee/issues/1732) [#1710](https://github.com/apify/crawlee/issues/1710)
+* **memory-storage:** dont fail when storage already purged ([#1737](https://github.com/apify/crawlee/issues/1737)) ([8694027](https://github.com/apify/crawlee/commit/86940273dbac2d13294140962f816f66582684ff)), closes [#1736](https://github.com/apify/crawlee/issues/1736)
+* **utils:** add missing dependency on `ow` ([bf0e03c](https://github.com/apify/crawlee/commit/bf0e03cc6ddc103c9337de5cd8dce9bc86c369a3)), closes [#1716](https://github.com/apify/crawlee/issues/1716)
+
+
+### Features
+
+* **MemoryStorage:** read from fs if persistStorage is enabled, ram only otherwise ([#1761](https://github.com/apify/crawlee/issues/1761)) ([e903980](https://github.com/apify/crawlee/commit/e9039809a0c0af0bc086be1f1400d18aa45ae490))
+
+
+
+
+
+## 3.1.2 (2022-11-15)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## 3.1.1 (2022-11-07)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+# 3.1.0 (2022-10-13)
+
+**Note:** Version bump only for package @crawlee/memory-storage
+
+
+
+
+
+## [3.0.4](https://github.com/apify/crawlee/compare/v3.0.3...v3.0.4) (2022-08-22)
+
+
+### Bug Fixes
+
+* key value stores emitting an error when multiple write promises ran in parallel ([#1460](https://github.com/apify/crawlee/issues/1460)) ([f201cca](https://github.com/apify/crawlee/commit/f201cca4a99d1c8b3e87be0289d5b3b363048f09))
+
+
+
