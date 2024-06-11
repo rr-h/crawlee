@@ -1,0 +1,2251 @@
+TEMPLATES.TXT
+
+
+
+
+MANIFEST.JSON
+
+{
+	"templates": [
+		{
+			"name": "getting-started-ts",
+			"description": "Getting started example [TypeScript]",
+			"files": [
+				"src/main.ts",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md",
+				"tsconfig.json"
+			]
+		},
+		{
+			"name": "getting-started-js",
+			"description": "Getting started example [JavaScript]",
+			"files": [
+				"src/main.js",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md"
+			]
+		},
+		{
+			"name": "empty-ts",
+			"description": "Empty project [TypeScript]",
+			"files": [
+				"src/main.ts",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md",
+				"tsconfig.json"
+			]
+		},
+		{
+			"name": "empty-js",
+			"description": "Empty project [JavaScript]",
+			"files": [
+				"src/main.js",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md"
+			]
+		},
+		{
+			"name": "cheerio-ts",
+			"description": "CheerioCrawler template project [TypeScript]",
+			"files": [
+				"src/main.ts",
+				"src/routes.ts",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md",
+				"tsconfig.json"
+			]
+		},
+		{
+			"name": "playwright-ts",
+			"description": "PlaywrightCrawler template project [TypeScript]",
+			"files": [
+				"src/main.ts",
+				"src/routes.ts",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md",
+				"tsconfig.json"
+			]
+		},
+		{
+			"name": "puppeteer-ts",
+			"description": "PuppeteerCrawler template project [TypeScript]",
+			"files": [
+				"src/main.ts",
+				"src/routes.ts",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md",
+				"tsconfig.json"
+			]
+		},
+		{
+			"name": "cheerio-js",
+			"description": "CheerioCrawler template project [JavaScript]",
+			"files": [
+				"src/main.js",
+				"src/routes.js",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md"
+			]
+		},
+		{
+			"name": "playwright-js",
+			"description": "PlaywrightCrawler template project [JavaScript]",
+			"files": [
+				"src/main.js",
+				"src/routes.js",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md"
+			]
+		},
+		{
+			"name": "puppeteer-js",
+			"description": "PuppeteerCrawler template project [JavaScript]",
+			"files": [
+				"src/main.js",
+				"src/routes.js",
+				".dockerignore",
+				".gitignore",
+				"Dockerfile",
+				"package.json",
+				"README.md"
+			]
+		}
+	]
+}
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "@crawlee/templates",
+    "version": "3.10.4",
+    "description": "Templates for the crawlee projects",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "keywords": [
+        "apify",
+        "headless",
+        "chrome",
+        "puppeteer",
+        "crawler",
+        "scraper"
+    ],
+    "author": {
+        "name": "Apify",
+        "email": "support@apify.com",
+        "url": "https://apify.com"
+    },
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/apify/crawlee"
+    },
+    "bugs": {
+        "url": "https://github.com/apify/crawlee/issues"
+    },
+    "homepage": "https://crawlee.dev",
+    "scripts": {
+        "build": "yarn clean && yarn validate && yarn compile && yarn copy",
+        "clean": "rimraf ./dist",
+        "compile": "tsc -p tsconfig.build.json && gen-esm-wrapper ./dist/index.js ./dist/index.mjs",
+        "copy": "tsx ../../scripts/copy.ts",
+        "validate": "node ./scripts/validate-manifest.mjs"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "ansi-colors": "^4.1.3",
+        "inquirer": "^9.0.0",
+        "tslib": "^2.4.0",
+        "yargonaut": "^1.1.4",
+        "yargs": "^17.5.1"
+    }
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "../../tsconfig.json",
+	"include": ["src/**/*"]
+}
+
+
+
+TSCONFIG.BUILD.JSON
+
+{
+	"extends": "../../tsconfig.build.json",
+	"compilerOptions": {
+		"outDir": "./dist"
+	},
+	"include": ["src/**/*"]
+}
+
+
+
+.NPMIGNORE
+
+node_modules
+src
+test
+coverage
+tsconfig.*
+
+
+
+VALIDATE-MANIFEST.MJS
+
+import { readFile, readdir, access } from 'node:fs/promises';
+import { URL } from 'node:url';
+
+const colors = {
+    red: (text) => `\x1B[31m${text}\x1B[39m`,
+    green: (text) => `\x1B[32m${text}\x1B[39m`,
+    grey: (text) => `\x1B[90m${text}\x1B[39m`,
+    yellow: (text) => `\x1B[33m${text}\x1B[39m`,
+};
+
+const templatesDirectory = new URL('../templates/', import.meta.url);
+const templateNames = await readdir(templatesDirectory);
+/** @type {{ templates: Array<{ name: string; description: string; files: string[] }>; }} */
+const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
+
+console.log(`Validating ${colors.green(manifest.templates.length)} templates`);
+
+let hasError = false;
+
+for (const manifestTemplate of manifest.templates) {
+    // Check if the folder it points to actually exists
+    if (!templateNames.includes(manifestTemplate.name)) {
+        console.error(colors.red(`Failed to find folder for template called ${colors.yellow(manifestTemplate.name)}`));
+        hasError = true;
+        // Skipping the rest of the validation as the template is missing
+        continue;
+    }
+
+    console.log(colors.grey(`Validating template ${colors.yellow(manifestTemplate.name)}`));
+
+    // Check that all files it requires exist
+    for (const requiredFile of manifestTemplate.files) {
+        try {
+            await access(new URL(`./${manifestTemplate.name}/${requiredFile}`, templatesDirectory));
+        } catch (err) {
+            if (err.code === 'ENOENT') {
+                hasError = true;
+                console.error(
+                    `${colors.grey(`[${colors.yellow(manifestTemplate.name)}]:`)} Failed to find file ${colors.yellow(
+                        requiredFile,
+                    )}`,
+                );
+                console.error(err);
+            } else {
+                console.warn(
+                    `${colors.grey(`[${colors.yellow(manifestTemplate.name)}]:`)} Failed to read file ${colors.yellow(
+                        requiredFile,
+                    )}`,
+                    err,
+                );
+            }
+        }
+    }
+
+    console.log(colors.green(`Finished validating ${colors.yellow(manifestTemplate.name)}`));
+}
+
+process.exitCode = hasError ? 1 : 0;
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node:20
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY . ./
+
+
+# Run the image.
+CMD npm start --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-cheerio-js",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + JavaScript empty project
+
+This template is a production ready boilerplate for developing with Crawlee. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Quick Start](https://crawlee.dev/docs/quick-start)
+- [Examples](https://crawlee.dev/docs/examples)
+
+
+
+MAIN.JS
+
+// Let's scrape something...
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node-puppeteer-chrome:20
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY --chown=myuser . ./
+
+
+# Run the image. If you know you won't need headful browsers,
+# you can remove the XVFB start script for a micro perf gain.
+CMD ./start_xvfb_and_run_cmd.sh && npm start --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-puppeteer-js",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0",
+        "puppeteer": "*"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + PuppeteerCrawler + JavaScript project
+
+This template is a production ready boilerplate for developing with `PuppeteerCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Documentation](https://crawlee.dev/api/puppeteer-crawler/class/PuppeteerCrawler)
+- [Examples](https://crawlee.dev/docs/examples/puppeteer-crawler)
+
+
+
+ROUTES.JS
+
+import { createPuppeteerRouter } from 'crawlee';
+
+export const router = createPuppeteerRouter();
+
+router.addDefaultHandler(async ({ enqueueLinks, log }) => {
+    log.info(`enqueueing new URLs`);
+    await enqueueLinks({
+        globs: ['https://crawlee.dev/**'],
+        label: 'detail',
+    });
+});
+
+router.addHandler('detail', async ({ request, page, log, pushData }) => {
+    const title = await page.title();
+    log.info(`${title}`, { url: request.loadedUrl });
+
+    await pushData({
+        url: request.loadedUrl,
+        title,
+    });
+});
+
+
+
+MAIN.JS
+
+// For more information, see https://crawlee.dev/
+import { PuppeteerCrawler, ProxyConfiguration } from 'crawlee';
+import { router } from './routes.js';
+
+const startUrls = ['https://crawlee.dev'];
+
+const crawler = new PuppeteerCrawler({
+    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
+    requestHandler: router,
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+});
+
+await crawler.run(startUrls);
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node-puppeteer-chrome:20 AS builder
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install all dependencies. Don't audit to speed up the installation.
+RUN npm install --include=dev --audit=false
+
+# Next, copy the source files using the user set
+# in the base image.
+COPY --chown=myuser . ./
+
+# Install all dependencies and build the project.
+# Don't audit to speed up the installation.
+RUN npm run build
+
+# Create final image
+FROM apify/actor-node-puppeteer-chrome:20
+
+# Copy only built JS files from builder image
+COPY --from=builder --chown=myuser /home/myuser/dist ./dist
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY --chown=myuser . ./
+
+
+# Run the image. If you know you won't need headful browsers,
+# you can remove the XVFB start script for a micro perf gain.
+CMD ./start_xvfb_and_run_cmd.sh && npm run start:prod --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-puppeteer-ts",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0",
+        "puppeteer": "*"
+    },
+    "devDependencies": {
+        "@apify/tsconfig": "^0.1.0",
+        "tsx": "^4.4.0",
+        "typescript": "~5.4.0",
+        "@types/node": "^20.0.0"
+    },
+    "scripts": {
+        "start": "npm run start:dev",
+        "start:prod": "node dist/main.js",
+        "start:dev": "tsx src/main.ts",
+        "build": "tsc",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "@apify/tsconfig",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+		"outDir": "dist",
+		"noUnusedLocals": false,
+		"lib": ["DOM"]
+	},
+	"include": ["./src/**/*"]
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + PuppeteerCrawler + TypeScript project
+
+This template is a production ready boilerplate for developing with `PuppeteerCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Documentation](https://crawlee.dev/api/puppeteer-crawler/class/PuppeteerCrawler)
+- [Examples](https://crawlee.dev/docs/examples/puppeteer-crawler)
+
+
+
+MAIN.TS
+
+// For more information, see https://crawlee.dev/
+import { PuppeteerCrawler, log } from 'crawlee';
+
+import { router } from './routes.js';
+
+const startUrls = ['https://crawlee.dev'];
+
+const crawler = new PuppeteerCrawler({
+    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
+    requestHandler: router,
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+});
+
+await crawler.run(startUrls);
+
+
+
+ROUTES.TS
+
+import { createPuppeteerRouter } from 'crawlee';
+
+export const router = createPuppeteerRouter();
+
+router.addDefaultHandler(async ({ enqueueLinks, log }) => {
+    log.info(`enqueueing new URLs`);
+    await enqueueLinks({
+        globs: ['https://crawlee.dev/**'],
+        label: 'detail',
+    });
+});
+
+router.addHandler('detail', async ({ request, page, log, pushData }) => {
+    const title = await page.title();
+    log.info(`${title}`, { url: request.loadedUrl });
+
+    await pushData({
+        url: request.loadedUrl,
+        title,
+    });
+});
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node:20 AS builder
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY package*.json ./
+
+# Install all dependencies. Don't audit to speed up the installation.
+RUN npm install --include=dev --audit=false
+
+# Next, copy the source files using the user set
+# in the base image.
+COPY . ./
+
+# Install all dependencies and build the project.
+# Don't audit to speed up the installation.
+RUN npm run build
+
+# Create final image
+FROM apify/actor-node:20
+
+# Copy only built JS files from builder image
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY . ./
+
+
+# Run the image.
+CMD npm run start:prod --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-cheerio-ts",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0"
+    },
+    "devDependencies": {
+        "@apify/tsconfig": "^0.1.0",
+        "tsx": "^4.4.0",
+        "typescript": "~5.4.0",
+        "@types/node": "^20.0.0"
+    },
+    "scripts": {
+        "start": "npm run start:dev",
+        "start:prod": "node dist/main.js",
+        "start:dev": "tsx src/main.ts",
+        "build": "tsc",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "@apify/tsconfig",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+		"outDir": "dist",
+		"noUnusedLocals": false,
+		"lib": ["DOM"]
+	},
+	"include": ["./src/**/*"]
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + CheerioCrawler + TypeScript project
+
+This template is a production ready boilerplate for developing with `CheerioCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Tutorial](https://crawlee.dev/docs/guides/cheerio-crawler-guide)
+- [Documentation](https://crawlee.dev/api/cheerio-crawler/class/CheerioCrawler)
+- [Examples](https://crawlee.dev/docs/examples/cheerio-crawler)
+
+
+
+MAIN.TS
+
+// For more information, see https://crawlee.dev/
+import { CheerioCrawler, ProxyConfiguration } from 'crawlee';
+
+import { router } from './routes.js';
+
+const startUrls = ['https://crawlee.dev'];
+
+const crawler = new CheerioCrawler({
+    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
+    requestHandler: router,
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+});
+
+await crawler.run(startUrls);
+
+
+
+ROUTES.TS
+
+import { createCheerioRouter } from 'crawlee';
+
+export const router = createCheerioRouter();
+
+router.addDefaultHandler(async ({ enqueueLinks, log }) => {
+    log.info(`enqueueing new URLs`);
+    await enqueueLinks({
+        globs: ['https://crawlee.dev/**'],
+        label: 'detail',
+    });
+});
+
+router.addHandler('detail', async ({ request, $, log, pushData }) => {
+    const title = $('title').text();
+    log.info(`${title}`, { url: request.loadedUrl });
+
+    await pushData({
+        url: request.loadedUrl,
+        title,
+    });
+});
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node:20
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY . ./
+
+
+# Run the image.
+CMD npm start --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-cheerio-js",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + CheerioCrawler + JavaScript project
+
+This template is a production ready boilerplate for developing with `CheerioCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Tutorial](https://crawlee.dev/docs/guides/cheerio-crawler-guide)
+- [Documentation](https://crawlee.dev/api/cheerio-crawler/class/CheerioCrawler)
+- [Examples](https://crawlee.dev/docs/examples/cheerio-crawler)
+
+
+
+ROUTES.JS
+
+import { createCheerioRouter } from 'crawlee';
+
+export const router = createCheerioRouter();
+
+router.addDefaultHandler(async ({ enqueueLinks, log }) => {
+    log.info(`enqueueing new URLs`);
+    await enqueueLinks({
+        globs: ['https://crawlee.dev/**'],
+        label: 'detail',
+    });
+});
+
+router.addHandler('detail', async ({ request, $, log, pushData }) => {
+    const title = $('title').text();
+    log.info(`${title}`, { url: request.loadedUrl });
+
+    await pushData({
+        url: request.loadedUrl,
+        title,
+    });
+});
+
+
+
+MAIN.JS
+
+// For more information, see https://crawlee.dev/
+import { CheerioCrawler, ProxyConfiguration } from 'crawlee';
+import { router } from './routes.js';
+
+const startUrls = ['https://crawlee.dev'];
+
+const crawler = new CheerioCrawler({
+    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
+    requestHandler: router,
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+});
+
+await crawler.run(startUrls);
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node-playwright-chrome:20
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY --chown=myuser . ./
+
+
+# Run the image.
+CMD npm start --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-getting-started-js",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0",
+        "playwright": "*"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Getting started with Crawlee
+
+This example uses `PlaywrightCrawler` to recursively crawl https://crawlee.dev using the browser automation library [Playwright](https://playwright.dev).
+
+You can find more examples and documentation at the following links:
+
+- [Step-by-step tutorial](https://crawlee.dev/docs/introduction) for Crawlee
+- `PlaywrightCrawler` [API documentation](https://crawlee.dev/api/playwright-crawler/class/PlaywrightCrawler)
+- Other [examples](https://crawlee.dev/docs/examples/playwright-crawler)
+
+
+
+MAIN.JS
+
+// For more information, see https://crawlee.dev/
+import { PlaywrightCrawler } from 'crawlee';
+
+// PlaywrightCrawler crawls the web using a headless
+// browser controlled by the Playwright library.
+const crawler = new PlaywrightCrawler({
+    // Use the requestHandler to process each of the crawled pages.
+    async requestHandler({ request, page, enqueueLinks, log, pushData }) {
+        const title = await page.title();
+        log.info(`Title of ${request.loadedUrl} is '${title}'`);
+
+        // Save results as JSON to ./storage/datasets/default
+        await pushData({ title, url: request.loadedUrl });
+
+        // Extract links from the current page
+        // and add them to the crawling queue.
+        await enqueueLinks();
+    },
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+    // Uncomment this option to see the browser window.
+    // headless: false,
+});
+
+// Add first URL to the queue and start the crawl.
+await crawler.run(['https://crawlee.dev']);
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node-playwright-chrome:20 AS builder
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install all dependencies. Don't audit to speed up the installation.
+RUN npm install --include=dev --audit=false
+
+# Next, copy the source files using the user set
+# in the base image.
+COPY --chown=myuser . ./
+
+# Install all dependencies and build the project.
+# Don't audit to speed up the installation.
+RUN npm run build
+
+# Create final image
+FROM apify/actor-node-playwright-chrome:20
+
+# Copy only built JS files from builder image
+COPY --from=builder --chown=myuser /home/myuser/dist ./dist
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY --chown=myuser . ./
+
+
+# Run the image. If you know you won't need headful browsers,
+# you can remove the XVFB start script for a micro perf gain.
+CMD ./start_xvfb_and_run_cmd.sh && npm run start:prod --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-playwright-ts",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0",
+        "playwright": "*"
+    },
+    "devDependencies": {
+        "@apify/tsconfig": "^0.1.0",
+        "tsx": "^4.4.0",
+        "typescript": "~5.4.0",
+        "@types/node": "^20.0.0"
+    },
+    "scripts": {
+        "start": "npm run start:dev",
+        "start:prod": "node dist/main.js",
+        "start:dev": "tsx src/main.ts",
+        "build": "tsc",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1",
+        "postinstall": "npx crawlee install-playwright-browsers"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "@apify/tsconfig",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+		"outDir": "dist",
+		"noUnusedLocals": false,
+		"lib": ["DOM"]
+	},
+	"include": ["./src/**/*"]
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + PlaywrightCrawler + TypeScript project
+
+This template is a production ready boilerplate for developing with `PlaywrightCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Documentation](https://crawlee.dev/api/playwright-crawler/class/PlaywrightCrawler)
+- [Examples](https://crawlee.dev/docs/examples/playwright-crawler)
+
+
+
+MAIN.TS
+
+// For more information, see https://crawlee.dev/
+import { PlaywrightCrawler, ProxyConfiguration } from 'crawlee';
+
+import { router } from './routes.js';
+
+const startUrls = ['https://crawlee.dev'];
+
+const crawler = new PlaywrightCrawler({
+    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
+    requestHandler: router,
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+});
+
+await crawler.run(startUrls);
+
+
+
+ROUTES.TS
+
+import { createPlaywrightRouter } from 'crawlee';
+
+export const router = createPlaywrightRouter();
+
+router.addDefaultHandler(async ({ enqueueLinks, log }) => {
+    log.info(`enqueueing new URLs`);
+    await enqueueLinks({
+        globs: ['https://crawlee.dev/**'],
+        label: 'detail',
+    });
+});
+
+router.addHandler('detail', async ({ request, page, log, pushData }) => {
+    const title = await page.title();
+    log.info(`${title}`, { url: request.loadedUrl });
+
+    await pushData({
+        url: request.loadedUrl,
+        title,
+    });
+});
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node:20 AS builder
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY package*.json ./
+
+# Install all dependencies. Don't audit to speed up the installation.
+RUN npm install --include=dev --audit=false
+
+# Next, copy the source files using the user set
+# in the base image.
+COPY . ./
+
+# Install all dependencies and build the project.
+# Don't audit to speed up the installation.
+RUN npm run build
+
+# Create final image
+FROM apify/actor-node:20
+
+# Copy only built JS files from builder image
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY . ./
+
+
+# Run the image.
+CMD npm run start:prod --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-cheerio-ts",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0"
+    },
+    "devDependencies": {
+        "@apify/tsconfig": "^0.1.0",
+        "tsx": "^4.4.0",
+        "typescript": "~5.4.0",
+        "@types/node": "^20.0.0"
+    },
+    "scripts": {
+        "start": "npm run start:dev",
+        "start:prod": "node dist/main.js",
+        "start:dev": "tsx src/main.ts",
+        "build": "tsc",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "@apify/tsconfig",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+		"outDir": "dist",
+		"noUnusedLocals": false,
+		"lib": ["DOM"]
+	},
+	"include": ["./src/**/*"]
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + TypeScript empty project
+
+This template is a production ready boilerplate for developing with Crawlee. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Quick Start](https://crawlee.dev/docs/quick-start)
+- [Examples](https://crawlee.dev/docs/examples)
+
+
+
+MAIN.TS
+
+// Let's scrape something...
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node-playwright-chrome:20 AS builder
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install all dependencies. Don't audit to speed up the installation.
+RUN npm install --include=dev --audit=false
+
+# Next, copy the source files using the user set
+# in the base image.
+COPY --chown=myuser . ./
+
+# Install all dependencies and build the project.
+# Don't audit to speed up the installation.
+RUN npm run build
+
+# Create final image
+FROM apify/actor-node-playwright-chrome:20
+
+# Copy only built JS files from builder image
+COPY --from=builder --chown=myuser /home/myuser/dist ./dist
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY --chown=myuser . ./
+
+
+# Run the image. If you know you won't need headful browsers,
+# you can remove the XVFB start script for a micro perf gain.
+CMD ./start_xvfb_and_run_cmd.sh && npm run start:prod --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-getting-started-ts",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0",
+        "playwright": "*"
+    },
+    "devDependencies": {
+        "@apify/tsconfig": "^0.1.0",
+        "tsx": "^4.4.0",
+        "typescript": "~5.4.0",
+        "@types/node": "^20.0.0"
+    },
+    "scripts": {
+        "start": "npm run start:dev",
+        "start:prod": "node dist/main.js",
+        "start:dev": "tsx src/main.ts",
+        "build": "tsc",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "@apify/tsconfig",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"target": "ES2022",
+		"outDir": "dist",
+		"noUnusedLocals": false,
+		"lib": ["DOM"]
+	},
+	"include": ["./src/**/*"]
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Getting started with Crawlee
+
+This example uses `PlaywrightCrawler` to recursively crawl https://crawlee.dev using the browser automation library [Playwright](https://playwright.dev).
+
+You can find more examples and documentation at the following links:
+
+- [Step-by-step tutorial](https://crawlee.dev/docs/introduction) for Crawlee
+- `PlaywrightCrawler` [API documentation](https://crawlee.dev/api/playwright-crawler/class/PlaywrightCrawler)
+- Other [examples](https://crawlee.dev/docs/examples/playwright-crawler)
+
+
+
+MAIN.TS
+
+// For more information, see https://crawlee.dev/
+import { PlaywrightCrawler } from 'crawlee';
+
+// PlaywrightCrawler crawls the web using a headless
+// browser controlled by the Playwright library.
+const crawler = new PlaywrightCrawler({
+    // Use the requestHandler to process each of the crawled pages.
+    async requestHandler({ request, page, enqueueLinks, log, pushData }) {
+        const title = await page.title();
+        log.info(`Title of ${request.loadedUrl} is '${title}'`);
+
+        // Save results as JSON to ./storage/datasets/default
+        await pushData({ title, url: request.loadedUrl });
+
+        // Extract links from the current page
+        // and add them to the crawling queue.
+        await enqueueLinks();
+    },
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+    // Uncomment this option to see the browser window.
+    // headless: false,
+});
+
+// Add first URL to the queue and start the crawl.
+await crawler.run(['https://crawlee.dev']);
+
+
+
+DOCKERFILE
+
+# Specify the base Docker image. You can read more about
+# the available images at https://crawlee.dev/docs/guides/docker-images
+# You can also use any other image from Docker Hub.
+FROM apify/actor-node-playwright-chrome:20
+
+# Copy just package.json and package-lock.json
+# to speed up the build using Docker layer cache.
+COPY --chown=myuser package*.json ./
+
+# Install NPM packages, skip optional and development dependencies to
+# keep the image small. Avoid logging too much and print the dependency
+# tree for debugging
+RUN npm --quiet set progress=false \
+    && npm install --omit=dev --omit=optional \
+    && echo "Installed NPM packages:" \
+    && (npm list --omit=dev --all || true) \
+    && echo "Node.js version:" \
+    && node --version \
+    && echo "NPM version:" \
+    && npm --version
+
+# Next, copy the remaining files and directories with the source code.
+# Since we do this after NPM install, quick build will be really fast
+# for most source file changes.
+COPY --chown=myuser . ./
+
+
+# Run the image. If you know you won't need headful browsers,
+# you can remove the XVFB start script for a micro perf gain.
+CMD ./start_xvfb_and_run_cmd.sh && npm start --silent
+
+
+
+PACKAGE.JSON
+
+{
+    "name": "crawlee-playwright-js",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "This is an example of a Crawlee project.",
+    "dependencies": {
+        "crawlee": "^3.0.0",
+        "playwright": "*"
+    },
+    "scripts": {
+        "start": "node src/main.js",
+        "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1",
+        "postinstall": "npx crawlee install-playwright-browsers"
+    },
+    "author": "It's not you it's me",
+    "license": "ISC"
+}
+
+
+
+.DOCKERIGNORE
+
+# configurations
+.idea
+
+# crawlee storage folder
+storage
+
+# installed files
+node_modules
+
+
+
+.GITIGNORE
+
+# This file tells Git which files shouldn't be added to source control
+
+.idea
+dist
+node_modules
+storage
+
+
+
+README.MD
+
+# Crawlee + PlaywrightCrawler + JavaScript project
+
+This template is a production ready boilerplate for developing with `PlaywrightCrawler`. Use this to bootstrap your projects using the most up-to-date code.
+
+If you're looking for examples or want to learn more visit:
+
+- [Documentation](https://crawlee.dev/api/playwright-crawler/class/PlaywrightCrawler)
+- [Examples](https://crawlee.dev/docs/examples/playwright-crawler)
+
+
+
+ROUTES.JS
+
+import { createPlaywrightRouter } from 'crawlee';
+
+export const router = createPlaywrightRouter();
+
+router.addDefaultHandler(async ({ enqueueLinks, log }) => {
+    log.info(`enqueueing new URLs`);
+    await enqueueLinks({
+        globs: ['https://crawlee.dev/**'],
+        label: 'detail',
+    });
+});
+
+router.addHandler('detail', async ({ request, page, log, pushData }) => {
+    const title = await page.title();
+    log.info(`${title}`, { url: request.loadedUrl });
+
+    await pushData({
+        url: request.loadedUrl,
+        title,
+    });
+});
+
+
+
+MAIN.JS
+
+// For more information, see https://crawlee.dev/
+import { PlaywrightCrawler, ProxyConfiguration } from 'crawlee';
+import { router } from './routes.js';
+
+const startUrls = ['https://crawlee.dev'];
+
+const crawler = new PlaywrightCrawler({
+    // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
+    requestHandler: router,
+    // Comment this option to scrape the full website.
+    maxRequestsPerCrawl: 20,
+});
+
+await crawler.run(startUrls);
+
+
+
+INDEX.TS
+
+import https from 'https';
+
+export const MANIFEST_URL = 'https://raw.githubusercontent.com/apify/crawlee/master/packages/templates/manifest.json';
+
+function templateFileUrl(templateName: string, path: string) {
+    return `https://raw.githubusercontent.com/apify/crawlee/master/packages/templates/templates/${templateName}/${path}`;
+}
+
+interface SharedTemplateData {
+    name: string;
+    description: string;
+}
+
+// Data received from the github file
+interface RawTemplate extends SharedTemplateData {
+    files: string[];
+}
+
+interface RawManifest {
+    templates: RawTemplate[];
+}
+
+// Data returned for the CLI or users to consume
+export interface Manifest {
+    templates: Template[];
+}
+
+export interface Template extends SharedTemplateData {
+    files: TemplateFile[];
+}
+
+export interface TemplateFile {
+    path: string;
+    url: string;
+}
+
+export async function fetchManifest(): Promise<Manifest> {
+    const rawManifest = await new Promise<RawManifest>((resolve, reject) => {
+        https
+            .get(MANIFEST_URL, (res) => {
+                let json = '';
+                res.on('data', (chunk) => {
+                    json += chunk;
+                })
+                    .once('end', () => {
+                        if (res.statusCode === 200) {
+                            try {
+                                const data = JSON.parse(json);
+                                resolve(data);
+                            } catch (e) {
+                                reject(e);
+                            }
+                        } else {
+                            reject(new Error(`Status: ${res.statusCode}\n${json}`));
+                        }
+                    })
+                    .on('error', (err) => reject(err));
+            })
+            .on('error', (err) => reject(err));
+    });
+
+    const newTemplates: Template[] = rawManifest.templates.map((original) => {
+        return {
+            name: original.name,
+            description: original.description,
+            files: original.files.map((file) => ({
+                path: file,
+                url: templateFileUrl(original.name, file),
+            })),
+        };
+    });
+
+    return {
+        templates: newTemplates,
+    };
+}
+
+
+
+CHANGELOG.MD
+
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## [3.10.4](https://github.com/apify/crawlee/compare/v3.10.3...v3.10.4) (2024-06-11)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.10.3](https://github.com/apify/crawlee/compare/v3.10.2...v3.10.3) (2024-06-07)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.10.2](https://github.com/apify/crawlee/compare/v3.10.1...v3.10.2) (2024-06-03)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.10.1](https://github.com/apify/crawlee/compare/v3.10.0...v3.10.1) (2024-05-23)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.10.0](https://github.com/apify/crawlee/compare/v3.9.2...v3.10.0) (2024-05-16)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.9.2](https://github.com/apify/crawlee/compare/v3.9.1...v3.9.2) (2024-04-17)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.9.1](https://github.com/apify/crawlee/compare/v3.9.0...v3.9.1) (2024-04-11)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.9.0](https://github.com/apify/crawlee/compare/v3.8.2...v3.9.0) (2024-04-10)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.8.2](https://github.com/apify/crawlee/compare/v3.8.1...v3.8.2) (2024-03-21)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.8.1](https://github.com/apify/crawlee/compare/v3.8.0...v3.8.1) (2024-02-22)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.8.0](https://github.com/apify/crawlee/compare/v3.7.3...v3.8.0) (2024-02-21)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.7.3](https://github.com/apify/crawlee/compare/v3.7.2...v3.7.3) (2024-01-30)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.7.2](https://github.com/apify/crawlee/compare/v3.7.1...v3.7.2) (2024-01-09)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.7.1](https://github.com/apify/crawlee/compare/v3.7.0...v3.7.1) (2024-01-02)
+
+
+### Bug Fixes
+
+* ES2022 build compatibility and move to NodeNext for module ([#2258](https://github.com/apify/crawlee/issues/2258)) ([7fe1e68](https://github.com/apify/crawlee/commit/7fe1e685904660c8446aafdf739fd1212684b48c)), closes [#2257](https://github.com/apify/crawlee/issues/2257)
+
+
+
+
+
+# [3.7.0](https://github.com/apify/crawlee/compare/v3.6.2...v3.7.0) (2023-12-21)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.6.2](https://github.com/apify/crawlee/compare/v3.6.1...v3.6.2) (2023-11-26)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.6.1](https://github.com/apify/crawlee/compare/v3.6.0...v3.6.1) (2023-11-15)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.6.0](https://github.com/apify/crawlee/compare/v3.5.8...v3.6.0) (2023-11-15)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.8](https://github.com/apify/crawlee/compare/v3.5.7...v3.5.8) (2023-10-17)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.7](https://github.com/apify/crawlee/compare/v3.5.6...v3.5.7) (2023-10-05)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.6](https://github.com/apify/crawlee/compare/v3.5.5...v3.5.6) (2023-10-04)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.5](https://github.com/apify/crawlee/compare/v3.5.4...v3.5.5) (2023-10-02)
+
+
+### Bug Fixes
+
+* **templates:** install browsers on postinstall for playwright ([#2104](https://github.com/apify/crawlee/issues/2104)) ([323768b](https://github.com/apify/crawlee/commit/323768bf335000ae2a23eaa903612cbdd73aaf0a))
+
+
+
+
+
+## [3.5.4](https://github.com/apify/crawlee/compare/v3.5.3...v3.5.4) (2023-09-11)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.3](https://github.com/apify/crawlee/compare/v3.5.2...v3.5.3) (2023-08-31)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.2](https://github.com/apify/crawlee/compare/v3.5.1...v3.5.2) (2023-08-21)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.5.1](https://github.com/apify/crawlee/compare/v3.5.0...v3.5.1) (2023-08-16)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.5.0](https://github.com/apify/crawlee/compare/v3.4.2...v3.5.0) (2023-07-31)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.4.2](https://github.com/apify/crawlee/compare/v3.4.1...v3.4.2) (2023-07-19)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.4.1](https://github.com/apify/crawlee/compare/v3.4.0...v3.4.1) (2023-07-13)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.4.0](https://github.com/apify/crawlee/compare/v3.3.3...v3.4.0) (2023-06-12)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.3.3](https://github.com/apify/crawlee/compare/v3.3.2...v3.3.3) (2023-05-31)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.3.2](https://github.com/apify/crawlee/compare/v3.3.1...v3.3.2) (2023-05-11)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.3.1](https://github.com/apify/crawlee/compare/v3.3.0...v3.3.1) (2023-04-11)
+
+
+### Bug Fixes
+
+* **templates:** added missing '@types/node' peer dependency ([#1860](https://github.com/apify/crawlee/issues/1860)) ([d37a7e2](https://github.com/apify/crawlee/commit/d37a7e2a068809df877dfd239f2500bce788eaf4))
+
+
+
+
+
+# [3.3.0](https://github.com/apify/crawlee/compare/v3.2.2...v3.3.0) (2023-03-09)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.2.2](https://github.com/apify/crawlee/compare/v3.2.1...v3.2.2) (2023-02-08)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.2.1](https://github.com/apify/crawlee/compare/v3.2.0...v3.2.1) (2023-02-07)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# [3.2.0](https://github.com/apify/crawlee/compare/v3.1.4...v3.2.0) (2023-02-07)
+
+
+### Bug Fixes
+
+* declare missing dependency on `tslib` ([27e96c8](https://github.com/apify/crawlee/commit/27e96c80c26e7fc31809a4b518d699573cb8c662)), closes [#1747](https://github.com/apify/crawlee/issues/1747)
+
+
+
+
+
+## 3.1.2 (2022-11-15)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## 3.1.1 (2022-11-07)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+# 3.1.0 (2022-10-13)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+
+
+## [3.0.4](https://github.com/apify/crawlee/compare/v3.0.3...v3.0.4) (2022-08-22)
+
+**Note:** Version bump only for package @crawlee/templates
+
+
+
+.ESLINTRC.JSON
+
+{
+	"root": true,
+	"extends": "../../.eslintrc.json",
+	"rules": {
+		"no-console": 0,
+		"@typescript-eslint/no-shadow": 0,
+		"@typescript-eslint/consistent-type-imports": 0
+	}
+}
+
+
+
