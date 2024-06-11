@@ -1,0 +1,3027 @@
+PACKAGE.JSON
+
+{
+    "name": "@crawlee/puppeteer",
+    "version": "3.10.4",
+    "description": "The scalable web crawling and scraping library for JavaScript/Node.js. Enables development of data extraction and web automation jobs (not only) with headless Chrome and Puppeteer.",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "keywords": [
+        "apify",
+        "headless",
+        "chrome",
+        "puppeteer",
+        "crawler",
+        "scraper"
+    ],
+    "author": {
+        "name": "Apify",
+        "email": "support@apify.com",
+        "url": "https://apify.com"
+    },
+    "contributors": [
+        "Jan Curn <jan@apify.com>",
+        "Marek Trunkat <marek@apify.com>",
+        "Ondra Urban <ondra@apify.com>"
+    ],
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/apify/crawlee"
+    },
+    "bugs": {
+        "url": "https://github.com/apify/crawlee/issues"
+    },
+    "homepage": "https://crawlee.dev",
+    "scripts": {
+        "build": "yarn clean && yarn compile && yarn copy",
+        "clean": "rimraf ./dist",
+        "compile": "tsc -p tsconfig.build.json && gen-esm-wrapper ./dist/index.js ./dist/index.mjs",
+        "copy": "tsx ../../scripts/copy.ts"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@apify/datastructures": "^2.0.0",
+        "@apify/log": "^2.4.0",
+        "@crawlee/browser": "3.10.4",
+        "@crawlee/browser-pool": "3.10.4",
+        "@crawlee/types": "3.10.4",
+        "@crawlee/utils": "3.10.4",
+        "cheerio": "^1.0.0-rc.12",
+        "devtools-protocol": "*",
+        "idcac-playwright": "^0.1.2",
+        "jquery": "^3.6.0",
+        "ow": "^0.28.1",
+        "tslib": "^2.4.0"
+    },
+    "peerDependencies": {
+        "puppeteer": "*"
+    },
+    "peerDependenciesMeta": {
+        "puppeteer": {
+            "optional": true
+        }
+    }
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "../../tsconfig.json",
+	"include": ["src/**/*"]
+}
+
+
+
+TSCONFIG.BUILD.JSON
+
+{
+	"extends": "../../tsconfig.build.json",
+	"compilerOptions": {
+		"outDir": "./dist"
+	},
+	"include": ["src/**/*"]
+}
+
+
+
+.NPMIGNORE
+
+node_modules
+src
+test
+coverage
+apify_storage
+tsconfig.*
+
+
+
+PUPPETEER-CRAWLER.TXT
+
+PACKAGE.JSON
+
+{
+    "name": "@crawlee/puppeteer",
+    "version": "3.10.4",
+    "description": "The scalable web crawling and scraping library for JavaScript/Node.js. Enables development of data extraction and web automation jobs (not only) with headless Chrome and Puppeteer.",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "keywords": [
+        "apify",
+        "headless",
+        "chrome",
+        "puppeteer",
+        "crawler",
+        "scraper"
+    ],
+    "author": {
+        "name": "Apify",
+        "email": "support@apify.com",
+        "url": "https://apify.com"
+    },
+    "contributors": [
+        "Jan Curn <jan@apify.com>",
+        "Marek Trunkat <marek@apify.com>",
+        "Ondra Urban <ondra@apify.com>"
+    ],
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/apify/crawlee"
+    },
+    "bugs": {
+        "url": "https://github.com/apify/crawlee/issues"
+    },
+    "homepage": "https://crawlee.dev",
+    "scripts": {
+        "build": "yarn clean && yarn compile && yarn copy",
+        "clean": "rimraf ./dist",
+        "compile": "tsc -p tsconfig.build.json && gen-esm-wrapper ./dist/index.js ./dist/index.mjs",
+        "copy": "tsx ../../scripts/copy.ts"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@apify/datastructures": "^2.0.0",
+        "@apify/log": "^2.4.0",
+        "@crawlee/browser": "3.10.4",
+        "@crawlee/browser-pool": "3.10.4",
+        "@crawlee/types": "3.10.4",
+        "@crawlee/utils": "3.10.4",
+        "cheerio": "^1.0.0-rc.12",
+        "devtools-protocol": "*",
+        "idcac-playwright": "^0.1.2",
+        "jquery": "^3.6.0",
+        "ow": "^0.28.1",
+        "tslib": "^2.4.0"
+    },
+    "peerDependencies": {
+        "puppeteer": "*"
+    },
+    "peerDependenciesMeta": {
+        "puppeteer": {
+            "optional": true
+        }
+    }
+}
+
+
+
+TSCONFIG.JSON
+
+{
+	"extends": "../../tsconfig.json",
+	"include": ["src/**/*"]
+}
+
+
+
+TSCONFIG.BUILD.JSON
+
+{
+	"extends": "../../tsconfig.build.json",
+	"compilerOptions": {
+		"outDir": "./dist"
+	},
+	"include": ["src/**/*"]
+}
+
+
+
+.NPMIGNORE
+
+node_modules
+src
+test
+coverage
+apify_storage
+tsconfig.*
+
+
+
+
+
+
+README.MD
+
+# `@crawlee/puppeteer`
+
+Provides a simple framework for parallel crawling of web pages using headless Chrome with [Puppeteer](https://github.com/puppeteer/puppeteer). The URLs to crawl are fed either from a static list of URLs or from a dynamic queue of URLs enabling recursive crawling of websites.
+
+Since `PuppeteerCrawler` uses headless Chrome to download web pages and extract data, it is useful for crawling of websites that require to execute JavaScript. If the target website doesn't need JavaScript, consider using [CheerioCrawler](https://crawlee.dev/api/cheerio-crawler/class/CheerioCrawler), which downloads the pages using raw HTTP requests and is about 10x faster.
+
+The source URLs are represented using [Request](https://crawlee.dev/api/core/class/Request) objects that are fed from [RequestList](https://crawlee.dev/api/core/class/RequestList) or [RequestQueue](https://crawlee.dev/api/core/class/RequestQueue) instances provided by the [PuppeteerCrawlerOptions.requestList](https://crawlee.dev/api/puppeteer-crawler/interface/PuppeteerCrawlerOptions#requestList) or [PuppeteerCrawlerOptions.requestQueue](https://crawlee.dev/api/puppeteer-crawler/interface/PuppeteerCrawlerOptions#requestQueue) constructor options, respectively.
+
+If both [PuppeteerCrawlerOptions.requestList](https://crawlee.dev/api/puppeteer-crawler/interface/PuppeteerCrawlerOptions#requestList) and [PuppeteerCrawlerOptions.requestQueue](https://crawlee.dev/api/puppeteer-crawler/interface/PuppeteerCrawlerOptions#requestQueue) are used,
+the instance first processes URLs from the [RequestList](https://crawlee.dev/api/core/class/RequestList) and automatically enqueues all of them
+to [RequestQueue](https://crawlee.dev/api/core/class/RequestQueue) before it starts their processing. This ensures that a single URL is not crawled multiple times.
+
+The crawler finishes when there are no more [Request](https://crawlee.dev/api/core/class/Request) objects to crawl.
+
+`PuppeteerCrawler` opens a new Chrome page (i.e. tab) for each [Request](https://crawlee.dev/api/core/class/Request) object to crawl
+and then calls the function provided by user as the [PuppeteerCrawlerOptions.requestHandler](https://crawlee.dev/api/puppeteer-crawler/interface/PuppeteerCrawlerOptions#requestHandler) option.
+
+New pages are only opened when there is enough free CPU and memory available,
+using the functionality provided by the [AutoscaledPool](https://crawlee.dev/api/core/class/AutoscaledPool) class.
+All [AutoscaledPool](https://crawlee.dev/api/core/class/AutoscaledPool) configuration options can be passed to the [PuppeteerCrawlerOptions.autoscaledPoolOptions](https://crawlee.dev/api/puppeteer-crawler/interface/PuppeteerCrawlerOptions#autoscaledPoolOptions)
+parameter of the `PuppeteerCrawler` constructor. For user convenience, the `minConcurrency` and `maxConcurrency`
+[AutoscaledPoolOptions](https://crawlee.dev/api/core/interface/AutoscaledPoolOptions) are available directly in the `PuppeteerCrawler` constructor.
+
+Note that the pool of Puppeteer instances is internally managed by the [BrowserPool](https://github.com/apify/browser-pool) class.
+
+## Example usage
+
+```javascript
+const crawler = new PuppeteerCrawler({
+    async requestHandler({ page, request }) {
+        // This function is called to extract data from a single web page
+        // 'page' is an instance of Puppeteer.Page with page.goto(request.url) already called
+        // 'request' is an instance of Request class with information about the page to load
+        await Dataset.pushData({
+            title: await page.title(),
+            url: request.url,
+            succeeded: true,
+        })
+    },
+    async failedRequestHandler({ request }) {
+        // This function is called when the crawling of a request failed too many times
+        await Dataset.pushData({
+            url: request.url,
+            succeeded: false,
+            errors: request.errorMessages,
+        })
+    },
+});
+
+await crawler.run([
+    'http://www.example.com/page-1',
+    'http://www.example.com/page-2',
+]);
+```
+
+
+
+PUPPETEER_UTILS.TS
+
+/**
+ * A namespace that contains various utilities for
+ * [Puppeteer](https://github.com/puppeteer/puppeteer) - the headless Chrome Node API.
+ *
+ * **Example usage:**
+ *
+ * ```javascript
+ * import { launchPuppeteer, utils } from 'crawlee';
+ *
+ * // Open https://www.example.com in Puppeteer
+ * const browser = await launchPuppeteer();
+ * const page = await browser.newPage();
+ * await page.goto('https://www.example.com');
+ *
+ * // Inject jQuery into a page
+ * await utils.puppeteer.injectJQuery(page);
+ * ```
+ * @module puppeteerUtils
+ */
+
+import { readFile } from 'fs/promises';
+import vm from 'vm';
+
+import { LruCache } from '@apify/datastructures';
+import log_ from '@apify/log';
+import type { Request } from '@crawlee/browser';
+import { KeyValueStore, RequestState, validators, Configuration } from '@crawlee/browser';
+import type { Dictionary, BatchAddRequestsResult } from '@crawlee/types';
+import { type CheerioRoot, expandShadowRoots, sleep } from '@crawlee/utils';
+import * as cheerio from 'cheerio';
+import type { ProtocolMapping } from 'devtools-protocol/types/protocol-mapping.js';
+import { getInjectableScript } from 'idcac-playwright';
+import ow from 'ow';
+import type { Page, HTTPResponse, ResponseForRequest, HTTPRequest as PuppeteerRequest } from 'puppeteer';
+
+import type { InterceptHandler } from './puppeteer_request_interception';
+import { addInterceptRequestHandler, removeInterceptRequestHandler } from './puppeteer_request_interception';
+import type { EnqueueLinksByClickingElementsOptions } from '../enqueue-links/click-elements';
+import { enqueueLinksByClickingElements } from '../enqueue-links/click-elements';
+import type { PuppeteerCrawlerOptions, PuppeteerCrawlingContext } from '../puppeteer-crawler';
+
+const jqueryPath = require.resolve('jquery');
+
+const MAX_INJECT_FILE_CACHE_SIZE = 10;
+const DEFAULT_BLOCK_REQUEST_URL_PATTERNS = ['.css', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.woff', '.pdf', '.zip'];
+
+const log = log_.child({ prefix: 'Puppeteer Utils' });
+
+export interface DirectNavigationOptions {
+    /**
+     * Maximum operation time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The
+     * default value can be changed by using the browserContext.setDefaultNavigationTimeout(timeout),
+     * browserContext.setDefaultTimeout(timeout), page.setDefaultNavigationTimeout(timeout) or
+     * page.setDefaultTimeout(timeout) methods.
+     */
+    timeout?: number;
+
+    /**
+     * When to consider operation succeeded, defaults to `load`. Events can be either:
+     * - `domcontentloaded` - consider operation to be finished when the `DOMContentLoaded` event is fired.
+     * - `load` - consider operation to be finished when the `load` event is fired.
+     * - `networkidle0` - consider operation to be finished when there are no network connections for at least `500` ms.
+     * - `networkidle2` - consider operation to be finished when there are no more than 2 network connections for at least `500` ms.
+     * - `networkidle` - alias for `networkidle0`
+     */
+    waitUntil?: 'domcontentloaded' | 'load' | 'networkidle' | 'networkidle0' | 'networkidle2';
+
+    /**
+     * Referer header value. If provided it will take preference over the referer header value set by page.setExtraHTTPHeaders(headers).
+     */
+    referer?: string;
+}
+
+export interface InjectFileOptions {
+    /**
+     * Enables the injected script to survive page navigations and reloads without need to be re-injected manually.
+     * This does not mean, however, that internal state will be preserved. Just that it will be automatically
+     * re-injected on each navigation before any other scripts get the chance to execute.
+     */
+    surviveNavigations?: boolean;
+}
+
+export interface BlockRequestsOptions {
+    /**
+     * The patterns of URLs to block from being loaded by the browser.
+     * Only `*` can be used as a wildcard. It is also automatically added to the beginning
+     * and end of the pattern. This limitation is enforced by the DevTools protocol.
+     * `.png` is the same as `*.png*`.
+     */
+    urlPatterns?: string[];
+
+    /**
+     * If you just want to append to the default blocked patterns, use this property.
+     */
+    extraUrlPatterns?: string[];
+}
+
+export interface CompiledScriptParams {
+    page: Page;
+    request: Request;
+}
+
+export type CompiledScriptFunction = (params: CompiledScriptParams) => Promise<unknown>;
+
+/**
+ * Cache contents of previously injected files to limit file system access.
+ */
+const injectedFilesCache = new LruCache({ maxLength: MAX_INJECT_FILE_CACHE_SIZE });
+
+/**
+ * Injects a JavaScript file into a Puppeteer page.
+ * Unlike Puppeteer's `addScriptTag` function, this function works on pages
+ * with arbitrary Cross-Origin Resource Sharing (CORS) policies.
+ *
+ * File contents are cached for up to 10 files to limit file system access.
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param filePath File path
+ * @param [options]
+ */
+export async function injectFile(page: Page, filePath: string, options: InjectFileOptions = {}): Promise<unknown> {
+    ow(page, ow.object.validate(validators.browserPage));
+    ow(filePath, ow.string);
+    ow(
+        options,
+        ow.object.exactShape({
+            surviveNavigations: ow.optional.boolean,
+        }),
+    );
+
+    let contents = injectedFilesCache.get(filePath);
+    if (!contents) {
+        contents = await readFile(filePath, 'utf8');
+        injectedFilesCache.add(filePath, contents);
+    }
+    const evalP = page.evaluate(contents);
+    if (options.surviveNavigations) {
+        page.on('framenavigated', async () =>
+            page
+                .evaluate(contents)
+                .catch((error) => log.warning('An error occurred during the script injection!', { error })),
+        );
+    }
+
+    return evalP;
+}
+
+/**
+ * Injects the [jQuery](https://jquery.com/) library into a Puppeteer page.
+ * jQuery is often useful for various web scraping and crawling tasks.
+ * For example, it can help extract text from HTML elements using CSS selectors.
+ *
+ * Beware that the injected jQuery object will be set to the `window.$` variable and thus it might cause conflicts with
+ * other libraries included by the page that use the same variable name (e.g. another version of jQuery).
+ * This can affect functionality of page's scripts.
+ *
+ * The injected jQuery will survive page navigations and reloads by default.
+ *
+ * **Example usage:**
+ * ```javascript
+ * await utils.puppeteer.injectJQuery(page);
+ * const title = await page.evaluate(() => {
+ *   return $('head title').text();
+ * });
+ * ```
+ *
+ * Note that `injectJQuery()` does not affect the Puppeteer's
+ * [`page.$()`](https://pptr.dev/api/puppeteer.page._/)
+ * function in any way.
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param [options.surviveNavigations] Opt-out option to disable the JQuery reinjection after navigation.
+ */
+export async function injectJQuery(page: Page, options?: { surviveNavigations?: boolean }): Promise<unknown> {
+    ow(page, ow.object.validate(validators.browserPage));
+    return injectFile(page, jqueryPath, { surviveNavigations: options?.surviveNavigations ?? true });
+}
+
+/**
+ * Returns Cheerio handle for `page.content()`, allowing to work with the data same way as with {@apilink CheerioCrawler}.
+ *
+ * **Example usage:**
+ * ```javascript
+ * const $ = await utils.puppeteer.parseWithCheerio(page);
+ * const title = $('title').text();
+ * ```
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param ignoreShadowRoots
+ */
+export async function parseWithCheerio(page: Page, ignoreShadowRoots = false): Promise<CheerioRoot> {
+    ow(page, ow.object.validate(validators.browserPage));
+
+    const html = ignoreShadowRoots
+        ? null
+        : ((await page.evaluate(`(${expandShadowRoots.toString()})(document)`)) as string);
+    const pageContent = html || (await page.content());
+
+    return cheerio.load(pageContent);
+}
+
+/**
+ * Forces the Puppeteer browser tab to block loading URLs that match a provided pattern.
+ * This is useful to speed up crawling of websites, since it reduces the amount
+ * of data that needs to be downloaded from the web, but it may break some websites
+ * or unexpectedly prevent loading of resources.
+ *
+ * By default, the function will block all URLs including the following patterns:
+ *
+ * ```json
+ * [".css", ".jpg", ".jpeg", ".png", ".svg", ".gif", ".woff", ".pdf", ".zip"]
+ * ```
+ *
+ * If you want to extend this list further, use the `extraUrlPatterns` option,
+ * which will keep blocking the default patterns, as well as add your custom ones.
+ * If you would like to block only specific patterns, use the `urlPatterns` option,
+ * which will override the defaults and block only URLs with your custom patterns.
+ *
+ * This function does not use Puppeteer's request interception and therefore does not interfere
+ * with browser cache. It's also faster than blocking requests using interception,
+ * because the blocking happens directly in the browser without the round-trip to Node.js,
+ * but it does not provide the extra benefits of request interception.
+ *
+ * The function will never block main document loads and their respective redirects.
+ *
+ * **Example usage**
+ * ```javascript
+ * import { launchPuppeteer, utils } from 'crawlee';
+ *
+ * const browser = await launchPuppeteer();
+ * const page = await browser.newPage();
+ *
+ * // Block all requests to URLs that include `adsbygoogle.js` and also all defaults.
+ * await utils.puppeteer.blockRequests(page, {
+ *     extraUrlPatterns: ['adsbygoogle.js'],
+ * });
+ *
+ * await page.goto('https://cnn.com');
+ * ```
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param [options]
+ */
+export async function blockRequests(page: Page, options: BlockRequestsOptions = {}): Promise<void> {
+    ow(page, ow.object.validate(validators.browserPage));
+    ow(
+        options,
+        ow.object.exactShape({
+            urlPatterns: ow.optional.array.ofType(ow.string),
+            extraUrlPatterns: ow.optional.array.ofType(ow.string),
+        }),
+    );
+
+    const { urlPatterns = DEFAULT_BLOCK_REQUEST_URL_PATTERNS, extraUrlPatterns = [] } = options;
+
+    const patternsToBlock = [...urlPatterns, ...extraUrlPatterns];
+
+    // We use CDP commands instead of request interception as the latter disables caching, which is not ideal
+    await sendCDPCommand(page, 'Network.setBlockedURLs', { urls: patternsToBlock });
+}
+
+/**
+ * @internal
+ */
+export async function sendCDPCommand<T extends keyof ProtocolMapping.Commands>(
+    page: Page,
+    command: T,
+    ...args: ProtocolMapping.Commands[T]['paramsType']
+): Promise<ProtocolMapping.Commands[T]['returnType']> {
+    // In puppeteer 16.x and 17.x, the `_client` method is completely omitted from the types. It's still there and works the same way, but it is hidden.
+
+    // Puppeteer <= 17
+    if (Reflect.has(page, '_client')) {
+        const client = Reflect.get(page, '_client');
+
+        if (typeof client === 'function') {
+            return client.call(page).send(command, ...args);
+        }
+
+        return client.send(command, ...args);
+    }
+
+    const jsonPath = require.resolve('puppeteer/package.json');
+    const parsed = JSON.parse(await readFile(jsonPath, 'utf-8'));
+
+    throw new Error(
+        `Cannot detect CDP client for Puppeteer ${parsed.version}. You should report this to Crawlee, mentioning the puppeteer version you are using.`,
+    );
+}
+
+/**
+ * `blockResources()` has a high impact on performance in recent versions of Puppeteer.
+ * Until this resolves, please use `utils.puppeteer.blockRequests()`.
+ * @deprecated
+ */
+export const blockResources = async (page: Page, resourceTypes = ['stylesheet', 'font', 'image', 'media']) => {
+    log.deprecated(
+        'utils.puppeteer.blockResources() has a high impact on performance in recent versions of Puppeteer. ' +
+            'Until this resolves, please use utils.puppeteer.blockRequests()',
+    );
+    await addInterceptRequestHandler(page, async (request) => {
+        const type = request.resourceType();
+        if (resourceTypes.includes(type)) await request.abort();
+        else await request.continue();
+    });
+};
+
+/**
+ * *NOTE:* In recent versions of Puppeteer using this function entirely disables browser cache which resolves in sub-optimal
+ * performance. Until this resolves, we suggest just relying on the in-browser cache unless absolutely necessary.
+ *
+ * Enables caching of intercepted responses into a provided object. Automatically enables request interception in Puppeteer.
+ * *IMPORTANT*: Caching responses stores them to memory, so too loose rules could cause memory leaks for longer running crawlers.
+ *   This issue should be resolved or atleast mitigated in future iterations of this feature.
+ * @param page
+ *   Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param cache
+ *   Object in which responses are stored
+ * @param responseUrlRules
+ *   List of rules that are used to check if the response should be cached.
+ *   String rules are compared as page.url().includes(rule) while RegExp rules are evaluated as rule.test(page.url()).
+ * @deprecated
+ */
+export async function cacheResponses(
+    page: Page,
+    cache: Dictionary<Partial<ResponseForRequest>>,
+    responseUrlRules: (string | RegExp)[],
+): Promise<void> {
+    ow(page, ow.object.validate(validators.browserPage));
+    ow(cache, ow.object);
+    ow(responseUrlRules, ow.array.ofType(ow.any(ow.string, ow.regExp)));
+
+    log.deprecated(
+        'utils.puppeteer.cacheResponses() has a high impact on performance ' +
+            "in recent versions of Puppeteer so it's use is discouraged until this issue resolves.",
+    );
+
+    await addInterceptRequestHandler(page, async (request) => {
+        const url = request.url();
+
+        if (cache[url]) {
+            await request.respond(cache[url]);
+            return;
+        }
+
+        await request.continue();
+    });
+
+    page.on('response', async (response) => {
+        const url = response.url();
+
+        // Response is already cached, do nothing
+        if (cache[url]) return;
+
+        const shouldCache = responseUrlRules.some((rule) => {
+            if (typeof rule === 'string') return url.includes(rule);
+            if (rule instanceof RegExp) return rule.test(url);
+            return false;
+        });
+
+        try {
+            if (shouldCache) {
+                const buffer = await response.buffer();
+                cache[url] = {
+                    status: response.status(),
+                    headers: response.headers(),
+                    body: buffer,
+                };
+            }
+        } catch (e) {
+            // ignore errors, usualy means that buffer is empty or broken connection
+        }
+    });
+}
+
+/**
+ * Compiles a Puppeteer script into an async function that may be executed at any time
+ * by providing it with the following object:
+ * ```
+ * {
+ *    page: Page,
+ *    request: Request,
+ * }
+ * ```
+ * Where `page` is a Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page)
+ * and `request` is a {@apilink Request}.
+ *
+ * The function is compiled by using the `scriptString` parameter as the function's body,
+ * so any limitations to function bodies apply. Return value of the compiled function
+ * is the return value of the function body = the `scriptString` parameter.
+ *
+ * As a security measure, no globals such as `process` or `require` are accessible
+ * from within the function body. Note that the function does not provide a safe
+ * sandbox and even though globals are not easily accessible, malicious code may
+ * still execute in the main process via prototype manipulation. Therefore you
+ * should only use this function to execute sanitized or safe code.
+ *
+ * Custom context may also be provided using the `context` parameter. To improve security,
+ * make sure to only pass the really necessary objects to the context. Preferably making
+ * secured copies beforehand.
+ */
+export function compileScript(scriptString: string, context: Dictionary = Object.create(null)): CompiledScriptFunction {
+    const funcString = `async ({ page, request }) => {${scriptString}}`;
+
+    let func;
+    try {
+        func = vm.runInNewContext(funcString, context); // "Secure" the context by removing prototypes, unless custom context is provided.
+    } catch (err) {
+        log.exception(err as Error, 'Cannot compile script!');
+        throw err;
+    }
+
+    if (typeof func !== 'function') throw new Error('Compilation result is not a function!'); // This should not happen...
+
+    return func;
+}
+
+/**
+ * Extended version of Puppeteer's `page.goto()` allowing to perform requests with HTTP method other than GET,
+ * with custom headers and POST payload. URL, method, headers and payload are taken from
+ * request parameter that must be an instance of Request class.
+ *
+ * *NOTE:* In recent versions of Puppeteer using requests other than GET, overriding headers and adding payloads disables
+ * browser cache which degrades performance.
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param request
+ * @param [gotoOptions] Custom options for `page.goto()`.
+ */
+export async function gotoExtended(
+    page: Page,
+    request: Request,
+    gotoOptions: DirectNavigationOptions = {},
+): Promise<HTTPResponse | null> {
+    ow(page, ow.object.validate(validators.browserPage));
+    ow(
+        request,
+        ow.object.partialShape({
+            url: ow.string.url,
+            method: ow.optional.string,
+            headers: ow.optional.object,
+            payload: ow.optional.any(ow.string, ow.buffer),
+        }),
+    );
+    ow(gotoOptions, ow.object);
+
+    gotoOptions = { ...gotoOptions };
+
+    if (gotoOptions.waitUntil === 'networkidle') {
+        gotoOptions.waitUntil = 'networkidle0';
+    }
+
+    const { url, method, headers, payload } = request;
+    const isEmpty = (o?: object) => !o || Object.keys(o).length === 0;
+
+    if (method !== 'GET' || payload || !isEmpty(headers)) {
+        // This is not deprecated, we use it to log only once.
+        log.deprecated(
+            'Using other request methods than GET, rewriting headers and adding payloads has a high impact on performance ' +
+                'in recent versions of Puppeteer. Use only when necessary.',
+        );
+        let wasCalled = false;
+        const interceptRequestHandler = async (interceptedRequest: PuppeteerRequest) => {
+            // We want to ensure that this won't get executed again in a case that there is a subsequent request
+            // for example for some asset file link from main HTML.
+            if (wasCalled) {
+                return interceptedRequest.continue();
+            }
+
+            wasCalled = true;
+            const overrides: Dictionary = {};
+
+            if (method !== 'GET') overrides.method = method;
+            if (payload) overrides.postData = payload;
+            if (!isEmpty(headers)) overrides.headers = headers;
+            await removeInterceptRequestHandler(page, interceptRequestHandler);
+            await interceptedRequest.continue(overrides);
+        };
+
+        await addInterceptRequestHandler(page, interceptRequestHandler);
+    }
+
+    return page.goto(url, gotoOptions as Dictionary);
+}
+
+export interface InfiniteScrollOptions {
+    /**
+     * How many seconds to scroll for. If 0, will scroll until bottom of page.
+     * @default 0
+     */
+    timeoutSecs?: number;
+
+    /**
+     * How many pixels to scroll down. If 0, will scroll until bottom of page.
+     * @default 0
+     */
+    maxScrollHeight?: number;
+
+    /**
+     * How many seconds to wait for no new content to load before exit.
+     * @default 4
+     */
+    waitForSecs?: number;
+
+    /**
+     * If true, it will scroll up a bit after each scroll down. This is required on some websites for the scroll to work.
+     * @default false
+     */
+    scrollDownAndUp?: boolean;
+
+    /**
+     * Optionally checks and clicks a button if it appears while scrolling. This is required on some websites for the scroll to work.
+     */
+    buttonSelector?: string;
+
+    /**
+     * This function is called after every scroll and stops the scrolling process if it returns `true`. The function can be `async`.
+     */
+    stopScrollCallback?: () => unknown | Promise<unknown>;
+}
+
+/**
+ * Scrolls to the bottom of a page, or until it times out.
+ * Loads dynamic content when it hits the bottom of a page, and then continues scrolling.
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param [options]
+ */
+export async function infiniteScroll(page: Page, options: InfiniteScrollOptions = {}): Promise<void> {
+    ow(page, ow.object.validate(validators.browserPage));
+    ow(
+        options,
+        ow.object.exactShape({
+            timeoutSecs: ow.optional.number,
+            maxScrollHeight: ow.optional.number,
+            waitForSecs: ow.optional.number,
+            scrollDownAndUp: ow.optional.boolean,
+            buttonSelector: ow.optional.string,
+            stopScrollCallback: ow.optional.function,
+        }),
+    );
+
+    const {
+        timeoutSecs = 0,
+        maxScrollHeight = 0,
+        waitForSecs = 4,
+        scrollDownAndUp = false,
+        buttonSelector,
+        stopScrollCallback,
+    } = options;
+
+    let finished;
+    const startTime = Date.now();
+    const CHECK_INTERVAL_MILLIS = 1000;
+    const SCROLL_HEIGHT_IF_ZERO = 10000;
+    let scrolledDistance = 0;
+    const maybeResourceTypesInfiniteScroll = ['xhr', 'fetch', 'websocket', 'other'];
+    const resourcesStats = {
+        newRequested: 0,
+        oldRequested: 0,
+        matchNumber: 0,
+    };
+
+    page.on('request', (msg) => {
+        if (maybeResourceTypesInfiniteScroll.includes(msg.resourceType())) {
+            resourcesStats.newRequested++;
+        }
+    });
+
+    // Move mouse to the center of the page, so we can scroll up-down
+    let body = await page.$('body');
+    let retry = 0;
+
+    while (!body && retry < 10) {
+        await sleep(100);
+        body = await page.$('body');
+        retry++;
+    }
+
+    if (!body) {
+        return;
+    }
+
+    const boundingBox = await body!.boundingBox();
+    await page.mouse.move(
+        boundingBox!.x + boundingBox!.width / 2, // x
+        boundingBox!.y + boundingBox!.height / 2, // y
+    );
+
+    const checkFinished = setInterval(() => {
+        if (resourcesStats.oldRequested === resourcesStats.newRequested) {
+            resourcesStats.matchNumber++;
+            if (resourcesStats.matchNumber >= waitForSecs) {
+                clearInterval(checkFinished);
+                finished = true;
+                return;
+            }
+        } else {
+            resourcesStats.matchNumber = 0;
+            resourcesStats.oldRequested = resourcesStats.newRequested;
+        }
+        // check if timeout has been reached
+        if (timeoutSecs !== 0 && (Date.now() - startTime) / 1000 > timeoutSecs) {
+            clearInterval(checkFinished);
+            finished = true;
+        }
+
+        // check if max scroll height has been reached
+        if (maxScrollHeight > 0 && scrolledDistance > maxScrollHeight) {
+            clearInterval(checkFinished);
+            finished = true;
+        }
+    }, CHECK_INTERVAL_MILLIS);
+
+    const doScroll = async () => {
+        /* istanbul ignore next */
+        const bodyScrollHeight = await page.evaluate(() => document.body.scrollHeight);
+
+        const delta = bodyScrollHeight === 0 ? SCROLL_HEIGHT_IF_ZERO : bodyScrollHeight;
+
+        await page.mouse.wheel({ deltaY: delta });
+        scrolledDistance += delta;
+    };
+
+    const maybeClickButton = async () => {
+        const button = await page.$(buttonSelector!);
+        // Box model returns null if the button is not visible
+        if (button && (await button.boxModel())) {
+            await button.click({ delay: 10 });
+        }
+    };
+
+    while (!finished) {
+        await doScroll();
+        await sleep(250);
+        if (scrollDownAndUp) {
+            await page.mouse.wheel({ deltaY: -1000 });
+        }
+        if (buttonSelector) {
+            await maybeClickButton();
+        }
+        if (stopScrollCallback) {
+            if (await stopScrollCallback()) {
+                clearInterval(checkFinished);
+                break;
+            }
+        }
+    }
+}
+
+export interface SaveSnapshotOptions {
+    /**
+     * Key under which the screenshot and HTML will be saved. `.jpg` will be appended for screenshot and `.html` for HTML.
+     * @default 'SNAPSHOT'
+     */
+    key?: string;
+
+    /**
+     * The quality of the image, between 0-100. Higher quality images have bigger size and require more storage.
+     * @default 50
+     */
+    screenshotQuality?: number;
+
+    /**
+     * If true, it will save a full screenshot of the current page as a record with `key` appended by `.jpg`.
+     * @default true
+     */
+    saveScreenshot?: boolean;
+
+    /**
+     * If true, it will save a full HTML of the current page as a record with `key` appended by `.html`.
+     * @default true
+     */
+    saveHtml?: boolean;
+
+    /**
+     * Name or id of the Key-Value store where snapshot is saved. By default it is saved to default Key-Value store.
+     * @default null
+     */
+    keyValueStoreName?: string | null;
+
+    /**
+     * Configuration of the crawler that will be used to save the snapshot.
+     * @default Configuration.getGlobalConfig()
+     */
+    config?: Configuration;
+}
+
+/**
+ * Saves a full screenshot and HTML of the current page into a Key-Value store.
+ * @param page Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page) object.
+ * @param [options]
+ */
+export async function saveSnapshot(page: Page, options: SaveSnapshotOptions = {}): Promise<void> {
+    ow(page, ow.object.validate(validators.browserPage));
+    ow(
+        options,
+        ow.object.exactShape({
+            key: ow.optional.string.nonEmpty,
+            screenshotQuality: ow.optional.number,
+            saveScreenshot: ow.optional.boolean,
+            saveHtml: ow.optional.boolean,
+            keyValueStoreName: ow.optional.string,
+            config: ow.optional.object,
+        }),
+    );
+
+    const {
+        key = 'SNAPSHOT',
+        screenshotQuality = 50,
+        saveScreenshot = true,
+        saveHtml = true,
+        keyValueStoreName,
+        config,
+    } = options;
+
+    try {
+        const store = await KeyValueStore.open(keyValueStoreName, {
+            config: config ?? Configuration.getGlobalConfig(),
+        });
+
+        if (saveScreenshot) {
+            const screenshotName = `${key}.jpg`;
+            const screenshotBuffer = await page.screenshot({
+                fullPage: true,
+                quality: screenshotQuality,
+                type: 'jpeg',
+            });
+            await store.setValue(screenshotName, screenshotBuffer, { contentType: 'image/jpeg' });
+        }
+
+        if (saveHtml) {
+            const htmlName = `${key}.html`;
+            const html = await page.content();
+            await store.setValue(htmlName, html, { contentType: 'text/html' });
+        }
+    } catch (err) {
+        throw new Error(`saveSnapshot with key ${key} failed.\nCause:${(err as Error).message}`);
+    }
+}
+
+export async function closeCookieModals(page: Page): Promise<void> {
+    await page.evaluate(getInjectableScript());
+}
+
+/** @internal */
+export interface PuppeteerContextUtils {
+    /**
+     * Injects a JavaScript file into current `page`.
+     * Unlike Puppeteer's `addScriptTag` function, this function works on pages
+     * with arbitrary Cross-Origin Resource Sharing (CORS) policies.
+     *
+     * File contents are cached for up to 10 files to limit file system access.
+     */
+    injectFile(filePath: string, options?: InjectFileOptions): Promise<unknown>;
+
+    /**
+     * Injects the [jQuery](https://jquery.com/) library into current `page`.
+     * jQuery is often useful for various web scraping and crawling tasks.
+     * For example, it can help extract text from HTML elements using CSS selectors.
+     *
+     * Beware that the injected jQuery object will be set to the `window.$` variable and thus it might cause conflicts with
+     * other libraries included by the page that use the same variable name (e.g. another version of jQuery).
+     * This can affect functionality of page's scripts.
+     *
+     * The injected jQuery will survive page navigations and reloads.
+     *
+     * **Example usage:**
+     * ```javascript
+     * async requestHandler({ page, injectJQuery }) {
+     *     await injectJQuery();
+     *     const title = await page.evaluate(() => {
+     *         return $('head title').text();
+     *     });
+     * });
+     * ```
+     *
+     * Note that `injectJQuery()` does not affect the Puppeteer's
+     * [`page.$()`](https://pptr.dev/api/puppeteer.page._/)
+     * function in any way.
+     */
+    injectJQuery(): Promise<unknown>;
+
+    /**
+     * Wait for an element matching the selector to appear.
+     * Timeout defaults to 5s.
+     *
+     * **Example usage:**
+     * ```ts
+     * async requestHandler({ waitForSelector, parseWithCheerio }) {
+     *     await waitForSelector('article h1');
+     *     const $ = await parseWithCheerio();
+     *     const title = $('title').text();
+     * });
+     * ```
+     */
+    waitForSelector(selector: string, timeoutMs?: number): Promise<void>;
+
+    /**
+     * Returns Cheerio handle for `page.content()`, allowing to work with the data same way as with {@apilink CheerioCrawler}.
+     * When provided with the `selector` argument, it waits for it to be available first.
+     *
+     * **Example usage:**
+     * ```ts
+     * async requestHandler({ parseWithCheerio }) {
+     *     const $ = await parseWithCheerio();
+     *     const title = $('title').text();
+     * });
+     * ```
+     */
+    parseWithCheerio(selector?: string, timeoutMs?: number): Promise<CheerioRoot>;
+
+    /**
+     * The function finds elements matching a specific CSS selector in a Puppeteer page,
+     * clicks all those elements using a mouse move and a left mouse button click and intercepts
+     * all the navigation requests that are subsequently produced by the page. The intercepted
+     * requests, including their methods, headers and payloads are then enqueued to a provided
+     * {@apilink RequestQueue}. This is useful to crawl JavaScript heavy pages where links are not available
+     * in `href` elements, but rather navigations are triggered in click handlers.
+     * If you're looking to find URLs in `href` attributes of the page, see {@apilink enqueueLinks}.
+     *
+     * Optionally, the function allows you to filter the target links' URLs using an array of {@apilink PseudoUrl} objects
+     * and override settings of the enqueued {@apilink Request} objects.
+     *
+     * **IMPORTANT**: To be able to do this, this function uses various mutations on the page,
+     * such as changing the Z-index of elements being clicked and their visibility. Therefore,
+     * it is recommended to only use this function as the last operation in the page.
+     *
+     * **USING HEADFUL BROWSER**: When using a headful browser, this function will only be able to click elements
+     * in the focused tab, effectively limiting concurrency to 1. In headless mode, full concurrency can be achieved.
+     *
+     * **PERFORMANCE**: Clicking elements with a mouse and intercepting requests is not a low level operation
+     * that takes nanoseconds. It's not very CPU intensive, but it takes time. We strongly recommend limiting
+     * the scope of the clicking as much as possible by using a specific selector that targets only the elements
+     * that you assume or know will produce a navigation. You can certainly click everything by using
+     * the `*` selector, but be prepared to wait minutes to get results on a large and complex page.
+     *
+     * **Example usage**
+     *
+     * ```javascript
+     * async requestHandler({ enqueueLinksByClickingElements }) {
+     *     await enqueueLinksByClickingElements({
+     *         selector: 'a.product-detail',
+     *         globs: [
+     *             'https://www.example.com/handbags/**'
+     *             'https://www.example.com/purses/**'
+     *         ],
+     *     });
+     * });
+     * ```
+     *
+     * @returns Promise that resolves to {@apilink BatchAddRequestsResult} object.
+     */
+    enqueueLinksByClickingElements(
+        options: Omit<EnqueueLinksByClickingElementsOptions, 'page' | 'requestQueue'>,
+    ): Promise<BatchAddRequestsResult>;
+
+    /**
+     * Forces the Puppeteer browser tab to block loading URLs that match a provided pattern.
+     * This is useful to speed up crawling of websites, since it reduces the amount
+     * of data that needs to be downloaded from the web, but it may break some websites
+     * or unexpectedly prevent loading of resources.
+     *
+     * By default, the function will block all URLs including the following patterns:
+     *
+     * ```json
+     * [".css", ".jpg", ".jpeg", ".png", ".svg", ".gif", ".woff", ".pdf", ".zip"]
+     * ```
+     *
+     * If you want to extend this list further, use the `extraUrlPatterns` option,
+     * which will keep blocking the default patterns, as well as add your custom ones.
+     * If you would like to block only specific patterns, use the `urlPatterns` option,
+     * which will override the defaults and block only URLs with your custom patterns.
+     *
+     * This function does not use Puppeteer's request interception and therefore does not interfere
+     * with browser cache. It's also faster than blocking requests using interception,
+     * because the blocking happens directly in the browser without the round-trip to Node.js,
+     * but it does not provide the extra benefits of request interception.
+     *
+     * The function will never block main document loads and their respective redirects.
+     *
+     * **Example usage**
+     * ```javascript
+     * preNavigationHooks: [
+     *     async ({ blockRequests }) => {
+     *         // Block all requests to URLs that include `adsbygoogle.js` and also all defaults.
+     *         await blockRequests({
+     *             extraUrlPatterns: ['adsbygoogle.js'],
+     *         }),
+     *     }),
+     * ],
+     * ```
+     */
+    blockRequests(options?: BlockRequestsOptions): Promise<void>;
+
+    /**
+     * `blockResources()` has a high impact on performance in recent versions of Puppeteer.
+     * Until this resolves, please use `utils.puppeteer.blockRequests()`.
+     * @deprecated
+     */
+    blockResources(resourceTypes?: string[]): Promise<void>;
+
+    /**
+     * *NOTE:* In recent versions of Puppeteer using this function entirely disables browser cache which resolves in sub-optimal
+     * performance. Until this resolves, we suggest just relying on the in-browser cache unless absolutely necessary.
+     *
+     * Enables caching of intercepted responses into a provided object. Automatically enables request interception in Puppeteer.
+     * *IMPORTANT*: Caching responses stores them to memory, so too loose rules could cause memory leaks for longer running crawlers.
+     *   This issue should be resolved or atleast mitigated in future iterations of this feature.
+     * @param cache
+     *   Object in which responses are stored
+     * @param responseUrlRules
+     *   List of rules that are used to check if the response should be cached.
+     *   String rules are compared as page.url().includes(rule) while RegExp rules are evaluated as rule.test(page.url()).
+     * @deprecated
+     */
+    cacheResponses(
+        cache: Dictionary<Partial<ResponseForRequest>>,
+        responseUrlRules: (string | RegExp)[],
+    ): Promise<void>;
+
+    /**
+     * Compiles a Puppeteer script into an async function that may be executed at any time
+     * by providing it with the following object:
+     * ```
+     * {
+     *    page: Page,
+     *    request: Request,
+     * }
+     * ```
+     * Where `page` is a Puppeteer [`Page`](https://pptr.dev/api/puppeteer.page)
+     * and `request` is a {@apilink Request}.
+     *
+     * The function is compiled by using the `scriptString` parameter as the function's body,
+     * so any limitations to function bodies apply. Return value of the compiled function
+     * is the return value of the function body = the `scriptString` parameter.
+     *
+     * As a security measure, no globals such as `process` or `require` are accessible
+     * from within the function body. Note that the function does not provide a safe
+     * sandbox and even though globals are not easily accessible, malicious code may
+     * still execute in the main process via prototype manipulation. Therefore you
+     * should only use this function to execute sanitized or safe code.
+     *
+     * Custom context may also be provided using the `context` parameter. To improve security,
+     * make sure to only pass the really necessary objects to the context. Preferably making
+     * secured copies beforehand.
+     */
+    compileScript(scriptString: string, ctx?: Dictionary): CompiledScriptFunction;
+
+    /**
+     * Adds request interception handler in similar to `page.on('request', handler);` but in addition to that
+     * supports multiple parallel handlers.
+     *
+     * All the handlers are executed sequentially in the order as they were added.
+     * Each of the handlers must call one of `request.continue()`, `request.abort()` and `request.respond()`.
+     * In addition to that any of the handlers may modify the request object (method, postData, headers)
+     * by passing its overrides to `request.continue()`.
+     * If multiple handlers modify same property then the last one wins. Headers are merged separately so you can
+     * override only a value of specific header.
+     *
+     * If one the handlers calls `request.abort()` or `request.respond()` then request is not propagated further
+     * to any of the remaining handlers.
+     *
+     *
+     * **Example usage:**
+     *
+     * ```javascript
+     * preNavigationHooks: [
+     *     async ({ addInterceptRequestHandler }) => {
+     *         // Replace images with placeholder.
+     *         await addInterceptRequestHandler((request) => {
+     *             if (request.resourceType() === 'image') {
+     *                 return request.respond({
+     *                     statusCode: 200,
+     *                     contentType: 'image/jpeg',
+     *                     body: placeholderImageBuffer,
+     *                 });
+     *             }
+     *             return request.continue();
+     *         });
+     *
+     *         // Abort all the scripts.
+     *         await addInterceptRequestHandler((request) => {
+     *             if (request.resourceType() === 'script') return request.abort();
+     *             return request.continue();
+     *         });
+     *
+     *         // Change requests to post.
+     *         await addInterceptRequestHandler((request) => {
+     *             return request.continue({
+     *                  method: 'POST',
+     *             });
+     *         });
+     *     }),
+     * ],
+     * ```
+     * @param handler Request interception handler.
+     */
+    addInterceptRequestHandler(handler: InterceptHandler): Promise<void>;
+
+    /**
+     * Removes request interception handler for given page.
+     *
+     * @param handler Request interception handler.
+     */
+    removeInterceptRequestHandler(handler: InterceptHandler): Promise<void>;
+
+    /**
+     * Scrolls to the bottom of a page, or until it times out.
+     * Loads dynamic content when it hits the bottom of a page, and then continues scrolling.
+     */
+    infiniteScroll(options?: InfiniteScrollOptions): Promise<void>;
+
+    /**
+     * Saves a full screenshot and HTML of the current page into a Key-Value store.
+     */
+    saveSnapshot(options?: SaveSnapshotOptions): Promise<void>;
+
+    /**
+     * Tries to close cookie consent modals on the page. Based on the I Don't Care About Cookies browser extension.
+     */
+    closeCookieModals(): Promise<void>;
+}
+
+/** @internal */
+export function registerUtilsToContext(
+    context: PuppeteerCrawlingContext,
+    crawlerOptions: PuppeteerCrawlerOptions,
+): void {
+    context.injectFile = async (filePath: string, options?: InjectFileOptions) =>
+        injectFile(context.page, filePath, options);
+    context.injectJQuery = async () => {
+        if (context.request.state === RequestState.BEFORE_NAV) {
+            log.warning(
+                'Using injectJQuery() in preNavigationHooks leads to unstable results. Use it in a postNavigationHook or a requestHandler instead.',
+            );
+            await injectJQuery(context.page);
+            return;
+        }
+        await injectJQuery(context.page, { surviveNavigations: false });
+    };
+    context.waitForSelector = async (selector: string, timeoutMs = 5_000) => {
+        await context.page.waitForSelector(selector, { timeout: timeoutMs });
+    };
+    context.parseWithCheerio = async (selector?: string, timeoutMs = 5_000) => {
+        if (selector) {
+            await context.waitForSelector(selector, timeoutMs);
+        }
+
+        return parseWithCheerio(context.page, crawlerOptions.ignoreShadowRoots);
+    };
+    context.enqueueLinksByClickingElements = async (
+        options: Omit<EnqueueLinksByClickingElementsOptions, 'page' | 'requestQueue'>,
+    ) =>
+        enqueueLinksByClickingElements({
+            page: context.page,
+            requestQueue: context.crawler.requestQueue!,
+            ...options,
+        });
+    context.blockRequests = async (options?: BlockRequestsOptions) => blockRequests(context.page, options);
+    context.blockResources = async (resourceTypes?: string[]) => blockResources(context.page, resourceTypes);
+    context.cacheResponses = async (
+        cache: Dictionary<Partial<ResponseForRequest>>,
+        responseUrlRules: (string | RegExp)[],
+    ) => {
+        return cacheResponses(context.page, cache, responseUrlRules);
+    };
+    context.compileScript = (scriptString: string, ctx?: Dictionary) => compileScript(scriptString, ctx);
+    context.addInterceptRequestHandler = async (handler: InterceptHandler) =>
+        addInterceptRequestHandler(context.page, handler);
+    context.removeInterceptRequestHandler = async (handler: InterceptHandler) =>
+        removeInterceptRequestHandler(context.page, handler);
+    context.infiniteScroll = async (options?: InfiniteScrollOptions) => infiniteScroll(context.page, options);
+    context.saveSnapshot = async (options?: SaveSnapshotOptions) =>
+        saveSnapshot(context.page, { ...options, config: context.crawler.config });
+    context.closeCookieModals = async () => closeCookieModals(context.page);
+}
+
+export { enqueueLinksByClickingElements, addInterceptRequestHandler, removeInterceptRequestHandler };
+
+/** @internal */
+export const puppeteerUtils = {
+    injectFile,
+    injectJQuery,
+    enqueueLinksByClickingElements,
+    blockRequests,
+    blockResources,
+    cacheResponses,
+    compileScript,
+    gotoExtended,
+    addInterceptRequestHandler,
+    removeInterceptRequestHandler,
+    infiniteScroll,
+    saveSnapshot,
+    parseWithCheerio,
+    closeCookieModals,
+};
+
+
+
+PUPPETEER_REQUEST_INTERCEPTION.TS
+
+import { EventEmitter } from 'events';
+
+import log from '@apify/log';
+import type { Dictionary } from '@crawlee/utils';
+import ow from 'ow';
+import type { HTTPRequest, HTTPRequest as PuppeteerRequest, Page } from 'puppeteer';
+
+// We use weak maps here so that the content gets discarded after page gets closed.
+const pageInterceptRequestHandlersMap: WeakMap<Page, InterceptHandler[]> = new WeakMap(); // Maps page to an array of request interception handlers.
+const pageInterceptRequestMasterHandlerMap = new WeakMap(); // Maps page to master request interception handler.
+const pageInterceptedRequestsMap = new WeakMap(); // Maps page to a set of its pending intercepted requests.
+
+/**
+ * Enables observation of changes of internal state to be able to queue other actions based on it.
+ * @ignore
+ */
+class ObservableSet<T> extends EventEmitter {
+    set = new Set<T>();
+
+    add(value: T): Set<T> {
+        this.set.add(value);
+        this.emit('add', value);
+        return this.set;
+    }
+
+    delete(value: T): boolean {
+        const success = this.set.delete(value);
+        this.emit('delete', value);
+        return success;
+    }
+
+    get size(): number {
+        return this.set.size;
+    }
+}
+
+export type InterceptHandler = (request: PuppeteerRequest) => unknown;
+
+/**
+ * Makes all request headers capitalized to more look like in browser
+ */
+function browserifyHeaders(headers: Record<string, string>): Record<string, string> {
+    const finalHeaders: Dictionary<string> = {};
+    // eslint-disable-next-line prefer-const
+    for (let [key, value] of Object.entries(headers)) {
+        key = key
+            .toLowerCase()
+            .split('-')
+            .map((str) => str.charAt(0).toUpperCase() + str.slice(1))
+            .join('-');
+
+        finalHeaders[key] = value;
+    }
+
+    return finalHeaders;
+}
+
+/**
+ * Executes an array for given intercept request handlers for a given request object.
+ *
+ * @param request Puppeteer's Request object.
+ * @param interceptRequestHandlers An array of intercept request handlers.
+ * @ignore
+ */
+async function handleRequest(request: PuppeteerRequest, interceptRequestHandlers?: InterceptHandler[]): Promise<void> {
+    // If there are no intercept handlers, it means that request interception is not enabled (anymore)
+    // and therefore .abort() .respond() and .continue() would throw and crash the process.
+    if (!interceptRequestHandlers?.length) return;
+
+    let wasAborted = false;
+    let wasResponded = false;
+    let wasContinued = false;
+    const accumulatedOverrides = {
+        headers: browserifyHeaders(request.headers()),
+    };
+
+    const originalContinue = request.continue.bind(request);
+    request.continue = async (overrides = {}) => {
+        wasContinued = true;
+        const headers = browserifyHeaders({ ...accumulatedOverrides.headers, ...overrides.headers });
+        Object.assign(accumulatedOverrides, overrides, { headers });
+    };
+
+    const { abort, respond } = request;
+    request.abort = async (...args) => {
+        wasAborted = true;
+        return abort.call(request, ...args);
+    };
+    request.respond = async (...args) => {
+        wasResponded = true;
+        return respond.call(request, ...args);
+    };
+
+    for (const handler of interceptRequestHandlers) {
+        wasContinued = false;
+
+        await handler(request);
+        // Check that one of the functions was called.
+        if (!wasAborted && !wasResponded && !wasContinued) {
+            throw new Error('Intercept request handler must call one of request.continue|respond|abort() methods!');
+        }
+
+        // If request was aborted or responded then we can finish immediately.
+        if (wasAborted || wasResponded) return;
+    }
+
+    return originalContinue(accumulatedOverrides);
+}
+
+/**
+ * Adds request interception handler in similar to `page.on('request', handler);` but in addition to that
+ * supports multiple parallel handlers.
+ *
+ * All the handlers are executed sequentially in the order as they were added.
+ * Each of the handlers must call one of `request.continue()`, `request.abort()` and `request.respond()`.
+ * In addition to that any of the handlers may modify the request object (method, postData, headers)
+ * by passing its overrides to `request.continue()`.
+ * If multiple handlers modify same property then the last one wins. Headers are merged separately so you can
+ * override only a value of specific header.
+ *
+ * If one the handlers calls `request.abort()` or `request.respond()` then request is not propagated further
+ * to any of the remaining handlers.
+ *
+ *
+ * **Example usage:**
+ *
+ * ```javascript
+ * // Replace images with placeholder.
+ * await addInterceptRequestHandler(page, (request) => {
+ *     if (request.resourceType() === 'image') {
+ *         return request.respond({
+ *             statusCode: 200,
+ *             contentType: 'image/jpeg',
+ *             body: placeholderImageBuffer,
+ *         });
+ *     }
+ *     return request.continue();
+ * });
+ *
+ * // Abort all the scripts.
+ * await addInterceptRequestHandler(page, (request) => {
+ *     if (request.resourceType() === 'script') return request.abort();
+ *     return request.continue();
+ * });
+ *
+ * // Change requests to post.
+ * await addInterceptRequestHandler(page, (request) => {
+ *     return request.continue({
+ *          method: 'POST',
+ *     });
+ * });
+ *
+ * await page.goto('http://example.com');
+ * ```
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/#?product=Puppeteer&show=api-class-page) object.
+ * @param handler Request interception handler.
+ */
+export async function addInterceptRequestHandler(page: Page, handler: InterceptHandler): Promise<void> {
+    ow(page, ow.object.hasKeys('goto', 'evaluate'));
+    ow(handler, ow.function);
+
+    if (!pageInterceptRequestHandlersMap.has(page)) {
+        pageInterceptRequestHandlersMap.set(page, []);
+    }
+
+    if (!pageInterceptedRequestsMap.has(page)) {
+        pageInterceptedRequestsMap.set(page, new ObservableSet());
+    }
+
+    const handlersArray = pageInterceptRequestHandlersMap.get(page)!;
+    handlersArray.push(handler);
+
+    // First handler was just added at this point so we need to set up request interception.
+    if (handlersArray.length === 1) {
+        await page.setRequestInterception(true);
+
+        // This is a handler that gets set in page.on('request', ...) and that executes all the user
+        // added custom handlers.
+        const masterHandler = async (request: HTTPRequest) => {
+            const interceptedRequests = pageInterceptedRequestsMap.get(page);
+            interceptedRequests.add(request);
+            const interceptHandlers = pageInterceptRequestHandlersMap.get(page);
+            try {
+                await handleRequest(request, interceptHandlers);
+            } finally {
+                interceptedRequests.delete(request);
+            }
+        };
+
+        pageInterceptRequestMasterHandlerMap.set(page, masterHandler);
+        page.on('request', masterHandler);
+    }
+}
+
+/**
+ * Removes request interception handler for given page.
+ *
+ * @param page Puppeteer [`Page`](https://pptr.dev/#?product=Puppeteer&show=api-class-page) object.
+ * @param handler Request interception handler.
+ */
+export async function removeInterceptRequestHandler(page: Page, handler: InterceptHandler): Promise<void> {
+    ow(page, ow.object.hasKeys('goto', 'evaluate'));
+    ow(handler, ow.function);
+
+    const handlersArray = pageInterceptRequestHandlersMap.get(page)!.filter((item) => item !== handler);
+
+    pageInterceptRequestHandlersMap.set(page, handlersArray);
+
+    if (handlersArray.length === 0) {
+        const interceptedRequestsInProgress = pageInterceptedRequestsMap.get(page);
+        // Since handlers can be async, we can't simply turn off request interception
+        // when there are no handlers, because some handlers could still
+        // be in progress and request.abort|respond|continue() would throw.
+        if (interceptedRequestsInProgress.size === 0) {
+            await disableRequestInterception(page);
+        } else {
+            const onDelete = async () => {
+                if (interceptedRequestsInProgress.size === 0) {
+                    try {
+                        await disableRequestInterception(page);
+                        interceptedRequestsInProgress.removeListener('delete', onDelete);
+                    } catch (error) {
+                        log.debug('Error while disabling request interception', { error });
+                    }
+                }
+            };
+            interceptedRequestsInProgress.on('delete', onDelete);
+        }
+    }
+}
+
+async function disableRequestInterception(page: Page): Promise<void> {
+    await page.setRequestInterception(false);
+    const requestHandler = pageInterceptRequestMasterHandlerMap.get(page);
+    page.off('request', requestHandler);
+}
+
+
+
+PUPPETEER-LAUNCHER.TS
+
+import type { BrowserLaunchContext } from '@crawlee/browser';
+import { BrowserLauncher, Configuration } from '@crawlee/browser';
+import { PuppeteerPlugin } from '@crawlee/browser-pool';
+import ow from 'ow';
+import type { Browser } from 'puppeteer';
+
+/**
+ * Apify extends the launch options of Puppeteer.
+ * You can use any of the Puppeteer compatible
+ * [`LaunchOptions`](https://pptr.dev/#?product=Puppeteer&show=api-puppeteerlaunchoptions)
+ * options by providing the `launchOptions` property.
+ *
+ * **Example:**
+ * ```js
+ * // launch a headless Chrome (not Chromium)
+ * const launchContext = {
+ *     // Apify helpers
+ *     useChrome: true,
+ *     proxyUrl: 'http://user:password@some.proxy.com'
+ *     // Native Puppeteer options
+ *     launchOptions: {
+ *         headless: true,
+ *         args: ['--some-flag'],
+ *     }
+ * }
+ * ```
+ */
+export interface PuppeteerLaunchContext extends BrowserLaunchContext<PuppeteerPlugin['launchOptions'], unknown> {
+    /**
+     *  `puppeteer.launch` [options](https://pptr.dev/#?product=Puppeteer&version=v13.5.1&show=api-puppeteerlaunchoptions)
+     */
+    launchOptions?: PuppeteerPlugin['launchOptions'];
+
+    /**
+     * URL to a HTTP proxy server. It must define the port number,
+     * and it may also contain proxy username and password.
+     *
+     * Example: `http://bob:pass123@proxy.example.com:1234`.
+     */
+    proxyUrl?: string;
+
+    /**
+     * If `true` and `executablePath` is not set,
+     * Puppeteer will launch full Google Chrome browser available on the machine
+     * rather than the bundled Chromium. The path to Chrome executable
+     * is taken from the `CRAWLEE_CHROME_EXECUTABLE_PATH` environment variable if provided,
+     * or defaults to the typical Google Chrome executable location specific for the operating system.
+     * By default, this option is `false`.
+     * @default false
+     */
+    useChrome?: boolean;
+
+    /**
+     * Already required module (`Object`). This enables usage of various Puppeteer
+     * wrappers such as `puppeteer-extra`.
+     *
+     * Take caution, because it can cause all kinds of unexpected errors and weird behavior.
+     * Crawlee is not tested with any other library besides `puppeteer` itself.
+     */
+    launcher?: unknown;
+
+    /**
+     * With this option selected, all pages will be opened in a new incognito browser context.
+     * This means they will not share cookies nor cache and their resources will not be throttled by one another.
+     * @default false
+     */
+    useIncognitoPages?: boolean;
+}
+
+/**
+ * `PuppeteerLauncher` is based on the `BrowserLauncher`. It launches `puppeteer` browser instance.
+ * @ignore
+ */
+export class PuppeteerLauncher extends BrowserLauncher<PuppeteerPlugin, unknown> {
+    protected static override optionsShape = {
+        ...BrowserLauncher.optionsShape,
+        launcher: ow.optional.object,
+    };
+
+    /**
+     * All `PuppeteerLauncher` parameters are passed via an launchContext object.
+     */
+    constructor(
+        launchContext: PuppeteerLaunchContext = {},
+        override readonly config = Configuration.getGlobalConfig(),
+    ) {
+        ow(launchContext, 'PuppeteerLauncher', ow.object.exactShape(PuppeteerLauncher.optionsShape));
+
+        const {
+            launcher = BrowserLauncher.requireLauncherOrThrow('puppeteer', 'apify/actor-node-puppeteer-chrome'),
+            ...browserLauncherOptions
+        } = launchContext;
+
+        super(
+            {
+                ...browserLauncherOptions,
+                launcher,
+            },
+            config,
+        );
+
+        this.Plugin = PuppeteerPlugin;
+    }
+
+    protected override _getDefaultHeadlessOption(): boolean {
+        const headless = super._getDefaultHeadlessOption();
+        return headless ? ('new' as any) : headless;
+    }
+}
+
+/**
+ * Launches headless Chrome using Puppeteer pre-configured to work within the Apify platform.
+ * The function has the same argument and the return value as `puppeteer.launch()`.
+ * See [Puppeteer documentation](https://github.com/puppeteer/puppeteer/blob/master/docs/api.md#puppeteerlaunchoptions) for more details.
+ *
+ * The `launchPuppeteer()` function alters the following Puppeteer options:
+ *
+ * - Passes the setting from the `CRAWLEE_HEADLESS` environment variable to the `headless` option,
+ *   unless it was already defined by the caller or `CRAWLEE_XVFB` environment variable is set to `1`.
+ *   Note that Apify Actor cloud platform automatically sets `CRAWLEE_HEADLESS=1` to all running actors.
+ * - Takes the `proxyUrl` option, validates it and adds it to `args` as `--proxy-server=XXX`.
+ *   The proxy URL must define a port number and have one of the following schemes: `http://`,
+ *   `https://`, `socks4://` or `socks5://`.
+ *   If the proxy is HTTP (i.e. has the `http://` scheme) and contains username or password,
+ *   the `launchPuppeteer` functions sets up an anonymous proxy HTTP
+ *   to make the proxy work with headless Chrome. For more information, read the
+ *   [blog post about proxy-chain library](https://blog.apify.com/how-to-make-headless-chrome-and-puppeteer-use-a-proxy-server-with-authentication-249a21a79212).
+ *
+ * To use this function, you need to have the [puppeteer](https://www.npmjs.com/package/puppeteer)
+ * NPM package installed in your project.
+ * When running on the Apify cloud, you can achieve that simply
+ * by using the `apify/actor-node-chrome` base Docker image for your actor - see
+ * [Apify Actor documentation](https://docs.apify.com/actor/build#base-images)
+ * for details.
+ *
+ * @param [launchContext]
+ *   All `PuppeteerLauncher` parameters are passed via an launchContext object.
+ *   If you want to pass custom `puppeteer.launch(options)` options you can use the `PuppeteerLaunchContext.launchOptions` property.
+ * @param [config]
+ * @returns
+ *   Promise that resolves to Puppeteer's `Browser` instance.
+ */
+export async function launchPuppeteer(
+    launchContext?: PuppeteerLaunchContext,
+    config = Configuration.getGlobalConfig(),
+): Promise<Browser> {
+    const puppeteerLauncher = new PuppeteerLauncher(launchContext, config);
+
+    return puppeteerLauncher.launch();
+}
+
+
+
+PUPPETEER-CRAWLER.TS
+
+import type {
+    BrowserCrawlerOptions,
+    BrowserCrawlingContext,
+    BrowserHook,
+    BrowserRequestHandler,
+    GetUserDataFromRequest,
+    RouterRoutes,
+} from '@crawlee/browser';
+import { BrowserCrawler, Configuration, Router } from '@crawlee/browser';
+import type { BrowserPoolOptions, PuppeteerController, PuppeteerPlugin } from '@crawlee/browser-pool';
+import type { Dictionary } from '@crawlee/types';
+import ow from 'ow';
+import type { HTTPResponse, LaunchOptions, Page } from 'puppeteer';
+
+import type { PuppeteerLaunchContext } from './puppeteer-launcher';
+import { PuppeteerLauncher } from './puppeteer-launcher';
+import type { DirectNavigationOptions, PuppeteerContextUtils } from './utils/puppeteer_utils';
+import { gotoExtended, registerUtilsToContext } from './utils/puppeteer_utils';
+
+export interface PuppeteerCrawlingContext<UserData extends Dictionary = Dictionary>
+    extends BrowserCrawlingContext<PuppeteerCrawler, Page, HTTPResponse, PuppeteerController, UserData>,
+        PuppeteerContextUtils {}
+export interface PuppeteerHook extends BrowserHook<PuppeteerCrawlingContext, PuppeteerGoToOptions> {}
+export interface PuppeteerRequestHandler extends BrowserRequestHandler<PuppeteerCrawlingContext> {}
+export type PuppeteerGoToOptions = Parameters<Page['goto']>[1];
+
+export interface PuppeteerCrawlerOptions
+    extends BrowserCrawlerOptions<PuppeteerCrawlingContext, { browserPlugins: [PuppeteerPlugin] }> {
+    /**
+     * Options used by {@apilink launchPuppeteer} to start new Puppeteer instances.
+     */
+    launchContext?: PuppeteerLaunchContext;
+
+    /**
+     * Async functions that are sequentially evaluated before the navigation. Good for setting additional cookies
+     * or browser properties before navigation. The function accepts two parameters, `crawlingContext` and `gotoOptions`,
+     * which are passed to the `page.goto()` function the crawler calls to navigate.
+     * Example:
+     * ```
+     * preNavigationHooks: [
+     *     async (crawlingContext, gotoOptions) => {
+     *         const { page } = crawlingContext;
+     *         await page.evaluate((attr) => { window.foo = attr; }, 'bar');
+     *     },
+     * ]
+     * ```
+     *
+     * Modyfing `pageOptions` is supported only in Playwright incognito.
+     * See {@apilink PrePageCreateHook}
+     */
+    preNavigationHooks?: PuppeteerHook[];
+
+    /**
+     * Async functions that are sequentially evaluated after the navigation. Good for checking if the navigation was successful.
+     * The function accepts `crawlingContext` as the only parameter.
+     * Example:
+     * ```
+     * postNavigationHooks: [
+     *     async (crawlingContext) => {
+     *         const { page } = crawlingContext;
+     *         if (hasCaptcha(page)) {
+     *             await solveCaptcha (page);
+     *         }
+     *     },
+     * ]
+     * ```
+     */
+    postNavigationHooks?: PuppeteerHook[];
+}
+
+/**
+ * Provides a simple framework for parallel crawling of web pages
+ * using headless Chrome with [Puppeteer](https://github.com/puppeteer/puppeteer).
+ * The URLs to crawl are fed either from a static list of URLs
+ * or from a dynamic queue of URLs enabling recursive crawling of websites.
+ *
+ * Since `PuppeteerCrawler` uses headless Chrome to download web pages and extract data,
+ * it is useful for crawling of websites that require to execute JavaScript.
+ * If the target website doesn't need JavaScript, consider using {@apilink CheerioCrawler},
+ * which downloads the pages using raw HTTP requests and is about 10x faster.
+ *
+ * The source URLs are represented using {@apilink Request} objects that are fed from
+ * {@apilink RequestList} or {@apilink RequestQueue} instances provided by the {@apilink PuppeteerCrawlerOptions.requestList}
+ * or {@apilink PuppeteerCrawlerOptions.requestQueue} constructor options, respectively.
+ *
+ * If both {@apilink PuppeteerCrawlerOptions.requestList} and {@apilink PuppeteerCrawlerOptions.requestQueue} are used,
+ * the instance first processes URLs from the {@apilink RequestList} and automatically enqueues all of them
+ * to {@apilink RequestQueue} before it starts their processing. This ensures that a single URL is not crawled multiple times.
+ *
+ * The crawler finishes when there are no more {@apilink Request} objects to crawl.
+ *
+ * `PuppeteerCrawler` opens a new Chrome page (i.e. tab) for each {@apilink Request} object to crawl
+ * and then calls the function provided by user as the {@apilink PuppeteerCrawlerOptions.requestHandler} option.
+ *
+ * New pages are only opened when there is enough free CPU and memory available,
+ * using the functionality provided by the {@apilink AutoscaledPool} class.
+ * All {@apilink AutoscaledPool} configuration options can be passed to the {@apilink PuppeteerCrawlerOptions.autoscaledPoolOptions}
+ * parameter of the `PuppeteerCrawler` constructor. For user convenience, the `minConcurrency` and `maxConcurrency`
+ * {@apilink AutoscaledPoolOptions} are available directly in the `PuppeteerCrawler` constructor.
+ *
+ * Note that the pool of Puppeteer instances is internally managed by the [BrowserPool](https://github.com/apify/browser-pool) class.
+ *
+ * **Example usage:**
+ *
+ * ```javascript
+ * const crawler = new PuppeteerCrawler({
+ *     async requestHandler({ page, request }) {
+ *         // This function is called to extract data from a single web page
+ *         // 'page' is an instance of Puppeteer.Page with page.goto(request.url) already called
+ *         // 'request' is an instance of Request class with information about the page to load
+ *         await Dataset.pushData({
+ *             title: await page.title(),
+ *             url: request.url,
+ *             succeeded: true,
+ *         })
+ *     },
+ *     async failedRequestHandler({ request }) {
+ *         // This function is called when the crawling of a request failed too many times
+ *         await Dataset.pushData({
+ *             url: request.url,
+ *             succeeded: false,
+ *             errors: request.errorMessages,
+ *         })
+ *     },
+ * });
+ *
+ * await crawler.run([
+ *     'http://www.example.com/page-1',
+ *     'http://www.example.com/page-2',
+ * ]);
+ * ```
+ * @category Crawlers
+ */
+export class PuppeteerCrawler extends BrowserCrawler<
+    { browserPlugins: [PuppeteerPlugin] },
+    LaunchOptions,
+    PuppeteerCrawlingContext
+> {
+    protected static override optionsShape = {
+        ...BrowserCrawler.optionsShape,
+        browserPoolOptions: ow.optional.object,
+    };
+
+    /**
+     * All `PuppeteerCrawler` parameters are passed via an options object.
+     */
+    constructor(
+        private readonly options: PuppeteerCrawlerOptions = {},
+        override readonly config = Configuration.getGlobalConfig(),
+    ) {
+        ow(options, 'PuppeteerCrawlerOptions', ow.object.exactShape(PuppeteerCrawler.optionsShape));
+
+        const { launchContext = {}, headless, proxyConfiguration, ...browserCrawlerOptions } = options;
+
+        const browserPoolOptions = {
+            ...options.browserPoolOptions,
+        } as BrowserPoolOptions;
+
+        if (launchContext.proxyUrl) {
+            throw new Error(
+                'PuppeteerCrawlerOptions.launchContext.proxyUrl is not allowed in PuppeteerCrawler.' +
+                    'Use PuppeteerCrawlerOptions.proxyConfiguration',
+            );
+        }
+
+        // `browserPlugins` is working when it's not overridden by `launchContext`,
+        // which for crawlers it is always overridden. Hence the error to use the other option.
+        if (browserPoolOptions.browserPlugins) {
+            throw new Error('browserPoolOptions.browserPlugins is disallowed. Use launchContext.launcher instead.');
+        }
+
+        if (headless != null) {
+            launchContext.launchOptions ??= {} as LaunchOptions;
+            launchContext.launchOptions.headless = headless as boolean;
+        }
+
+        const puppeteerLauncher = new PuppeteerLauncher(launchContext, config);
+
+        browserPoolOptions.browserPlugins = [puppeteerLauncher.createBrowserPlugin()];
+
+        super({ ...browserCrawlerOptions, launchContext, proxyConfiguration, browserPoolOptions }, config);
+    }
+
+    protected override async _runRequestHandler(context: PuppeteerCrawlingContext) {
+        registerUtilsToContext(context, this.options);
+        await super._runRequestHandler(context);
+    }
+
+    protected override async _navigationHandler(
+        crawlingContext: PuppeteerCrawlingContext,
+        gotoOptions: DirectNavigationOptions,
+    ) {
+        return gotoExtended(crawlingContext.page, crawlingContext.request, gotoOptions);
+    }
+}
+
+/**
+ * Creates new {@apilink Router} instance that works based on request labels.
+ * This instance can then serve as a `requestHandler` of your {@apilink PuppeteerCrawler}.
+ * Defaults to the {@apilink PuppeteerCrawlingContext}.
+ *
+ * > Serves as a shortcut for using `Router.create<PuppeteerCrawlingContext>()`.
+ *
+ * ```ts
+ * import { PuppeteerCrawler, createPuppeteerRouter } from 'crawlee';
+ *
+ * const router = createPuppeteerRouter();
+ * router.addHandler('label-a', async (ctx) => {
+ *    ctx.log.info('...');
+ * });
+ * router.addDefaultHandler(async (ctx) => {
+ *    ctx.log.info('...');
+ * });
+ *
+ * const crawler = new PuppeteerCrawler({
+ *     requestHandler: router,
+ * });
+ * await crawler.run();
+ * ```
+ */
+export function createPuppeteerRouter<
+    Context extends PuppeteerCrawlingContext = PuppeteerCrawlingContext,
+    UserData extends Dictionary = GetUserDataFromRequest<Context['request']>,
+>(routes?: RouterRoutes<Context, UserData>) {
+    return Router.create<Context>(routes);
+}
+
+
+
+CLICK-ELEMENTS.TS
+
+import { URL } from 'url';
+
+import log_ from '@apify/log';
+import type {
+    GlobInput,
+    PseudoUrlInput,
+    RegExpInput,
+    RequestTransform,
+    UrlPatternObject,
+    RequestOptions,
+    RequestProvider,
+} from '@crawlee/browser';
+import {
+    constructGlobObjectsFromGlobs,
+    constructRegExpObjectsFromPseudoUrls,
+    constructRegExpObjectsFromRegExps,
+    createRequests,
+    createRequestOptions,
+} from '@crawlee/browser';
+import type { Dictionary, BatchAddRequestsResult } from '@crawlee/types';
+import ow from 'ow';
+import type { ClickOptions, Frame, HTTPRequest as PuppeteerRequest, Page, Target } from 'puppeteer';
+
+import { addInterceptRequestHandler, removeInterceptRequestHandler } from '../utils/puppeteer_request_interception';
+
+const STARTING_Z_INDEX = 2147400000;
+const log = log_.child({ prefix: 'Puppeteer Click Elements' });
+
+export interface EnqueueLinksByClickingElementsOptions {
+    /**
+     * Puppeteer [`Page`](https://pptr.dev/#?product=Puppeteer&show=api-class-page) object.
+     */
+    page: Page;
+
+    /**
+     * A request queue to which the URLs will be enqueued.
+     */
+    requestQueue: RequestProvider;
+
+    /**
+     * A CSS selector matching elements to be clicked on. Unlike in {@apilink enqueueLinks}, there is no default
+     * value. This is to prevent suboptimal use of this function by using it too broadly.
+     */
+    selector: string;
+
+    /** Sets {@apilink Request.userData} for newly enqueued requests. */
+    userData?: Dictionary;
+
+    /** Sets {@apilink Request.label} for newly enqueued requests. */
+    label?: string;
+
+    /**
+     * Click options for use in Puppeteer's click handler.
+     */
+    clickOptions?: ClickOptions;
+
+    /**
+     * An array of glob pattern strings or plain objects
+     * containing glob pattern strings matching the URLs to be enqueued.
+     *
+     * The plain objects must include at least the `glob` property, which holds the glob pattern string.
+     * All remaining keys will be used as request options for the corresponding enqueued {@apilink Request} objects.
+     *
+     * The matching is always case-insensitive.
+     * If you need case-sensitive matching, use `regexps` property directly.
+     *
+     * If `globs` is an empty array or `undefined`, then the function
+     * enqueues all the intercepted navigation requests produced by the page
+     * after clicking on elements matching the provided CSS selector.
+     */
+    globs?: GlobInput[];
+
+    /**
+     * An array of regular expressions or plain objects
+     * containing regular expressions matching the URLs to be enqueued.
+     *
+     * The plain objects must include at least the `regexp` property, which holds the regular expression.
+     * All remaining keys will be used as request options for the corresponding enqueued {@apilink Request} objects.
+     *
+     * If `regexps` is an empty array or `undefined`, then the function
+     * enqueues all the intercepted navigation requests produced by the page
+     * after clicking on elements matching the provided CSS selector.
+     */
+    regexps?: RegExpInput[];
+
+    /**
+     * *NOTE:* In future versions of SDK the options will be removed.
+     * Please use `globs` or `regexps` instead.
+     *
+     * An array of {@apilink PseudoUrl} strings or plain objects
+     * containing {@apilink PseudoUrl} strings matching the URLs to be enqueued.
+     *
+     * The plain objects must include at least the `purl` property, which holds the pseudo-URL pattern string.
+     * All remaining keys will be used as request options for the corresponding enqueued {@apilink Request} objects.
+     *
+     * With a pseudo-URL string, the matching is always case-insensitive.
+     * If you need case-sensitive matching, use `regexps` property directly.
+     *
+     * If `pseudoUrls` is an empty array or `undefined`, then the function
+     * enqueues all the intercepted navigation requests produced by the page
+     * after clicking on elements matching the provided CSS selector.
+     *
+     * @deprecated prefer using `globs` or `regexps` instead
+     */
+    pseudoUrls?: PseudoUrlInput[];
+
+    /**
+     * Just before a new {@apilink Request} is constructed and enqueued to the {@apilink RequestQueue}, this function can be used
+     * to remove it or modify its contents such as `userData`, `payload` or, most importantly `uniqueKey`. This is useful
+     * when you need to enqueue multiple `Requests` to the queue that share the same URL, but differ in methods or payloads,
+     * or to dynamically update or create `userData`.
+     *
+     * For example: by adding `useExtendedUniqueKey: true` to the `request` object, `uniqueKey` will be computed from
+     * a combination of `url`, `method` and `payload` which enables crawling of websites that navigate using form submits
+     * (POST requests).
+     *
+     * **Example:**
+     * ```javascript
+     * {
+     *     transformRequestFunction: (request) => {
+     *         request.userData.foo = 'bar';
+     *         request.useExtendedUniqueKey = true;
+     *         return request;
+     *     }
+     * }
+     * ```
+     */
+    transformRequestFunction?: RequestTransform;
+
+    /**
+     * Clicking in the page triggers various asynchronous operations that lead to new URLs being shown
+     * by the browser. It could be a simple JavaScript redirect or opening of a new tab in the browser.
+     * These events often happen only some time after the actual click. Requests typically take milliseconds
+     * while new tabs open in hundreds of milliseconds.
+     *
+     * To be able to capture all those events, the `enqueueLinksByClickingElements()` function repeatedly waits
+     * for the `waitForPageIdleSecs`. By repeatedly we mean that whenever a relevant event is triggered, the timer
+     * is restarted. As long as new events keep coming, the function will not return, unless
+     * the below `maxWaitForPageIdleSecs` timeout is reached.
+     *
+     * You may want to reduce this for example when you're sure that your clicks do not open new tabs,
+     * or increase when you're not getting all the expected URLs.
+     * @default 1
+     */
+    waitForPageIdleSecs?: number;
+
+    /**
+     * This is the maximum period for which the function will keep tracking events, even if more events keep coming.
+     * Its purpose is to prevent a deadlock in the page by periodic events, often unrelated to the clicking itself.
+     * See `waitForPageIdleSecs` above for an explanation.
+     * @default 5
+     */
+    maxWaitForPageIdleSecs?: number;
+
+    /**
+     * If set to `true`:
+     *   - while adding the request to the queue: the request will be added to the foremost position in the queue.
+     *   - while reclaiming the request: the request will be placed to the beginning of the queue, so that it's returned
+     *   in the next call to {@apilink RequestQueue.fetchNextRequest}.
+     * By default, it's put to the end of the queue.
+     * @default false
+     */
+    forefront?: boolean;
+
+    /**
+     * If set to `true`, tells the crawler to skip navigation and process the request directly.
+     * @default false
+     */
+    skipNavigation?: boolean;
+}
+
+/**
+ * The function finds elements matching a specific CSS selector in a Puppeteer page,
+ * clicks all those elements using a mouse move and a left mouse button click and intercepts
+ * all the navigation requests that are subsequently produced by the page. The intercepted
+ * requests, including their methods, headers and payloads are then enqueued to a provided
+ * {@apilink RequestQueue}. This is useful to crawl JavaScript heavy pages where links are not available
+ * in `href` elements, but rather navigations are triggered in click handlers.
+ * If you're looking to find URLs in `href` attributes of the page, see {@apilink enqueueLinks}.
+ *
+ * Optionally, the function allows you to filter the target links' URLs using an array of {@apilink PseudoUrl} objects
+ * and override settings of the enqueued {@apilink Request} objects.
+ *
+ * **IMPORTANT**: To be able to do this, this function uses various mutations on the page,
+ * such as changing the Z-index of elements being clicked and their visibility. Therefore,
+ * it is recommended to only use this function as the last operation in the page.
+ *
+ * **USING HEADFUL BROWSER**: When using a headful browser, this function will only be able to click elements
+ * in the focused tab, effectively limiting concurrency to 1. In headless mode, full concurrency can be achieved.
+ *
+ * **PERFORMANCE**: Clicking elements with a mouse and intercepting requests is not a low level operation
+ * that takes nanoseconds. It's not very CPU intensive, but it takes time. We strongly recommend limiting
+ * the scope of the clicking as much as possible by using a specific selector that targets only the elements
+ * that you assume or know will produce a navigation. You can certainly click everything by using
+ * the `*` selector, but be prepared to wait minutes to get results on a large and complex page.
+ *
+ * **Example usage**
+ *
+ * ```javascript
+ * await utils.puppeteer.enqueueLinksByClickingElements({
+ *   page,
+ *   requestQueue,
+ *   selector: 'a.product-detail',
+ *   pseudoUrls: [
+ *       'https://www.example.com/handbags/[.*]'
+ *       'https://www.example.com/purses/[.*]'
+ *   ],
+ * });
+ * ```
+ *
+ * @returns Promise that resolves to {@apilink BatchAddRequestsResult} object.
+ */
+export async function enqueueLinksByClickingElements(
+    options: EnqueueLinksByClickingElementsOptions,
+): Promise<BatchAddRequestsResult> {
+    ow(
+        options,
+        ow.object.exactShape({
+            page: ow.object.hasKeys('goto', 'evaluate'),
+            requestQueue: ow.object.hasKeys('fetchNextRequest', 'addRequest'),
+            selector: ow.string,
+            userData: ow.optional.object,
+            clickOptions: ow.optional.object.hasKeys('clickCount', 'delay'),
+            pseudoUrls: ow.optional.array.ofType(ow.any(ow.string, ow.object.hasKeys('purl'))),
+            globs: ow.optional.array.ofType(ow.any(ow.string, ow.object.hasKeys('glob'))),
+            regexps: ow.optional.array.ofType(ow.any(ow.regExp, ow.object.hasKeys('regexp'))),
+            transformRequestFunction: ow.optional.function,
+            waitForPageIdleSecs: ow.optional.number,
+            maxWaitForPageIdleSecs: ow.optional.number,
+            label: ow.optional.string,
+            forefront: ow.optional.boolean,
+            skipNavigation: ow.optional.boolean,
+        }),
+    );
+
+    const {
+        page,
+        requestQueue,
+        selector,
+        clickOptions,
+        pseudoUrls,
+        globs,
+        regexps,
+        transformRequestFunction,
+        waitForPageIdleSecs = 1,
+        maxWaitForPageIdleSecs = 5,
+        forefront,
+    } = options;
+
+    const waitForPageIdleMillis = waitForPageIdleSecs * 1000;
+    const maxWaitForPageIdleMillis = maxWaitForPageIdleSecs * 1000;
+
+    const urlPatternObjects: UrlPatternObject[] = [];
+
+    if (pseudoUrls?.length) {
+        log.deprecated('`pseudoUrls` option is deprecated, use `globs` or `regexps` instead');
+        urlPatternObjects.push(...constructRegExpObjectsFromPseudoUrls(pseudoUrls));
+    }
+
+    if (globs?.length) {
+        urlPatternObjects.push(...constructGlobObjectsFromGlobs(globs));
+    }
+
+    if (regexps?.length) {
+        urlPatternObjects.push(...constructRegExpObjectsFromRegExps(regexps));
+    }
+
+    const interceptedRequests = await clickElementsAndInterceptNavigationRequests({
+        page,
+        selector,
+        waitForPageIdleMillis,
+        maxWaitForPageIdleMillis,
+        clickOptions,
+    });
+    let requestOptions = createRequestOptions(interceptedRequests, options);
+    if (transformRequestFunction) {
+        requestOptions = requestOptions.map(transformRequestFunction).filter((r) => !!r) as RequestOptions[];
+    }
+    const requests = createRequests(requestOptions, urlPatternObjects);
+    const { addedRequests } = await requestQueue.addRequestsBatched(requests, { forefront });
+
+    return { processedRequests: addedRequests, unprocessedRequests: [] };
+}
+
+interface WaitForPageIdleOptions {
+    page: Page;
+    waitForPageIdleMillis?: number;
+    maxWaitForPageIdleMillis?: number;
+}
+
+interface ClickElementsAndInterceptNavigationRequestsOptions extends WaitForPageIdleOptions {
+    selector: string;
+    clickOptions?: ClickOptions;
+}
+
+/**
+ * Clicks all elements of given page matching given selector.
+ * Catches and intercepts all initiated navigation requests and opened pages.
+ * Returns a list of all target URLs.
+ * @ignore
+ */
+export async function clickElementsAndInterceptNavigationRequests(
+    options: ClickElementsAndInterceptNavigationRequestsOptions,
+): Promise<Dictionary[]> {
+    const { page, selector, waitForPageIdleMillis, maxWaitForPageIdleMillis, clickOptions } = options;
+
+    const uniqueRequests = new Set<string>();
+    const browser = page.browser();
+
+    const onInterceptedRequest = createInterceptRequestHandler(page, uniqueRequests);
+    const onTargetCreated = createTargetCreatedHandler(page, uniqueRequests);
+    const onFrameNavigated = createFrameNavigatedHandler(page, uniqueRequests);
+
+    await addInterceptRequestHandler(page, onInterceptedRequest);
+    browser.on('targetcreated', onTargetCreated);
+    page.on('framenavigated', onFrameNavigated);
+
+    await preventHistoryNavigation(page);
+
+    await clickElements(page, selector, clickOptions);
+    await waitForPageIdle({ page, waitForPageIdleMillis, maxWaitForPageIdleMillis });
+
+    await restoreHistoryNavigationAndSaveCapturedUrls(page, uniqueRequests);
+
+    browser.off('targetcreated', onTargetCreated);
+    page.off('framenavigated', onFrameNavigated);
+    await removeInterceptRequestHandler(page, onInterceptedRequest);
+
+    const serializedRequests = Array.from(uniqueRequests);
+    return serializedRequests.map((r) => JSON.parse(r));
+}
+
+/**
+ * @ignore
+ */
+function createInterceptRequestHandler(page: Page, requests: Set<string>): (req: PuppeteerRequest) => Promise<void> {
+    return async function onInterceptedRequest(req) {
+        if (!isTopFrameNavigationRequest(page, req)) return req.continue();
+        const url = req.url();
+        requests.add(
+            JSON.stringify({
+                url,
+                headers: req.headers(),
+                method: req.method(),
+                payload: req.postData(),
+            }),
+        );
+
+        if (req.redirectChain().length) {
+            await req.respond({ body: '' }); // Prevents 301/302 redirect
+        } else {
+            await req.abort('aborted'); // Prevents navigation by js
+        }
+    };
+}
+
+/**
+ * @ignore
+ */
+function isTopFrameNavigationRequest(page: Page, req: PuppeteerRequest): boolean {
+    return req.isNavigationRequest() && req.frame() === page.mainFrame();
+}
+
+/**
+ * @ignore
+ */
+function createTargetCreatedHandler(page: Page, requests: Set<string>): (target: Target) => Promise<void> {
+    return async function onTargetCreated(target) {
+        if (!isTargetRelevant(page, target)) return;
+        const url = target.url();
+        requests.add(JSON.stringify({ url }));
+
+        // We want to close the page but don't care about
+        // possible errors like target closed.
+        try {
+            const createdPage = await target.page();
+            await createdPage!.close();
+        } catch (err) {
+            log.debug('enqueueLinksByClickingElements: Could not close spawned page.', { error: (err as Error).stack });
+        }
+    };
+}
+
+/**
+ * We're only interested in pages created by the page we're currently clicking in.
+ * There will generally be a lot of other targets being created in the browser.
+ */
+export function isTargetRelevant(page: Page, target: Target): boolean {
+    return target.type() === 'page' && page.target() === target.opener();
+}
+
+/**
+ * @ignore
+ */
+function createFrameNavigatedHandler(page: Page, requests: Set<string>): (frame: Frame) => void {
+    return function onFrameNavigated(frame) {
+        if (frame !== page.mainFrame()) return;
+        const url = frame.url();
+        requests.add(JSON.stringify({ url }));
+    };
+}
+
+interface ApifyWindow {
+    stateHistory: unknown[][];
+    length: number;
+    state: Dictionary;
+    go(): void;
+    back(): void;
+    forward(): void;
+    pushState(...args: unknown[]): void;
+    replaceState(...args: unknown[]): void;
+}
+
+/**
+ * @ignore
+ */
+async function preventHistoryNavigation(page: Page): Promise<unknown> {
+    /* istanbul ignore next */
+    return page.evaluate(() => {
+        (window as unknown as Dictionary).__originalHistory__ = window.history;
+        delete (window as unknown as Dictionary).history; // Simple override does not work.
+        (window as unknown as Dictionary).history = {
+            stateHistory: [],
+            length: 0,
+            state: {},
+            go() {},
+            back() {},
+            forward() {},
+            pushState(...args: unknown[]) {
+                this.stateHistory.push(args);
+            },
+            replaceState(...args: unknown[]) {
+                this.stateHistory.push(args);
+            },
+        } as ApifyWindow;
+    });
+}
+
+/**
+ * Click all elements matching the given selector. To be able to do this using
+ * Puppeteer's `.click()` we need to make sure the elements are reachable by mouse,
+ * so we first move them to the top of the page's stacking context and then click.
+ * We do all in series to prevent elements from hiding one another. Therefore,
+ * for large element sets, this will take considerable amount of time.
+ * @ignore
+ */
+export async function clickElements(page: Page, selector: string, clickOptions?: ClickOptions): Promise<void> {
+    const elementHandles = await page.$$(selector);
+    log.debug(`enqueueLinksByClickingElements: There are ${elementHandles.length} elements to click.`);
+    let clickedElementsCount = 0;
+    let zIndex = STARTING_Z_INDEX;
+    let shouldLogWarning = true;
+    for (const handle of elementHandles) {
+        try {
+            await page.evaluate(updateElementCssToEnableMouseClick, handle, zIndex++);
+            await handle.click(clickOptions);
+            clickedElementsCount++;
+        } catch (err) {
+            const e = err as Error;
+            if (shouldLogWarning && e.stack!.includes('is detached from document')) {
+                log.warning(
+                    `An element with selector ${selector} that you're trying to click has been removed from the page. ` +
+                        'This was probably caused by an earlier click which triggered some JavaScript on the page that caused it to change. ' +
+                        'If you\'re trying to enqueue pagination links, we suggest using the "next" button, if available and going one by one.',
+                );
+                shouldLogWarning = false;
+            }
+            log.debug('enqueueLinksByClickingElements: Click failed.', { stack: e.stack });
+        }
+    }
+    log.debug(
+        `enqueueLinksByClickingElements: Successfully clicked ${clickedElementsCount} elements out of ${elementHandles.length}`,
+    );
+}
+
+/* istanbul ignore next */
+/**
+ * This is an in browser function!
+ */
+function updateElementCssToEnableMouseClick(el: Element, zIndex: number): void {
+    const casted = el as HTMLElement;
+    casted.style.visibility = 'visible';
+    casted.style.display = 'block';
+    casted.style.position = 'fixed';
+    casted.style.zIndex = String(zIndex);
+    casted.style.left = '0';
+    casted.style.top = '0';
+    const boundingRect = casted.getBoundingClientRect();
+    if (!boundingRect.height) casted.style.height = '10px';
+    if (!boundingRect.width) casted.style.width = '10px';
+}
+
+/**
+ * This function tracks whether any requests, frame navigations or targets were emitted
+ * in the past idleIntervalMillis and whenever the interval registers no activity,
+ * the function returns.
+ *
+ * It will also return when a final timeout, represented by the timeoutMillis parameter
+ * is reached, to prevent blocking on pages with constant network activity.
+ *
+ * We need this to make sure we don't finish too soon when intercepting requests triggered
+ * by clicking in the page. They often get registered by the Node.js process only some
+ * milliseconds after clicking and we would lose those requests. This is especially prevalent
+ * when there's only a single element to click.
+ * @ignore
+ */
+async function waitForPageIdle({
+    page,
+    waitForPageIdleMillis,
+    maxWaitForPageIdleMillis,
+}: WaitForPageIdleOptions): Promise<void> {
+    return new Promise<void>((resolve) => {
+        let timeout: NodeJS.Timeout;
+        let maxTimeout: NodeJS.Timeout;
+        const context = page.browserContext();
+
+        function newTabTracker(target: Target) {
+            if (isTargetRelevant(page, target)) activityHandler();
+        }
+
+        function activityHandler() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                clearTimeout(maxTimeout);
+                finish();
+            }, waitForPageIdleMillis);
+        }
+
+        function maxTimeoutHandler() {
+            log.debug(
+                `enqueueLinksByClickingElements: Page still showed activity after ${maxWaitForPageIdleMillis}ms. ` +
+                    'This is probably due to the website itself dispatching requests, but some links may also have been missed.',
+            );
+            finish();
+        }
+
+        function finish() {
+            page.off('request', activityHandler);
+            page.off('framenavigated', activityHandler);
+            context.off('targetcreated', newTabTracker);
+            resolve();
+        }
+
+        maxTimeout = setTimeout(maxTimeoutHandler, maxWaitForPageIdleMillis);
+        activityHandler(); // We call this once manually in case there would be no requests at all.
+        page.on('request', activityHandler);
+        page.on('framenavigated', activityHandler);
+        context.on('targetcreated', newTabTracker);
+    });
+}
+
+/**
+ * @ignore
+ */
+async function restoreHistoryNavigationAndSaveCapturedUrls(page: Page, requests: Set<string>): Promise<void> {
+    /* istanbul ignore next */
+    const state = await page.evaluate(() => {
+        const { stateHistory } = window.history as unknown as ApifyWindow;
+        (window as unknown as Dictionary).history = (window as unknown as Dictionary).__originalHistory__;
+        return stateHistory;
+    });
+    state.forEach((args) => {
+        try {
+            const stateUrl = args[args.length - 1] as string;
+            const url = new URL(stateUrl, page.url()).href;
+            requests.add(JSON.stringify({ url }));
+        } catch (err) {
+            log.debug('enqueueLinksByClickingElements: Failed to ', { error: (err as Error).stack });
+        }
+    });
+}
+
+
+
+INDEX.TS
+
+export * from '@crawlee/browser';
+export * from './internals/puppeteer-crawler';
+export * from './internals/puppeteer-launcher';
+
+export * as puppeteerRequestInterception from './internals/utils/puppeteer_request_interception';
+export type { InterceptHandler } from './internals/utils/puppeteer_request_interception';
+
+export * as puppeteerUtils from './internals/utils/puppeteer_utils';
+export type {
+    BlockRequestsOptions,
+    CompiledScriptFunction,
+    CompiledScriptParams,
+    DirectNavigationOptions as PuppeteerDirectNavigationOptions,
+    InfiniteScrollOptions,
+    InjectFileOptions,
+    SaveSnapshotOptions,
+} from './internals/utils/puppeteer_utils';
+
+export * as puppeteerClickElements from './internals/enqueue-links/click-elements';
+export type { EnqueueLinksByClickingElementsOptions } from './internals/enqueue-links/click-elements';
+
+
+
+CHANGELOG.MD
+
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## [3.10.4](https://github.com/apify/crawlee/compare/v3.10.3...v3.10.4) (2024-06-11)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.10.3](https://github.com/apify/crawlee/compare/v3.10.2...v3.10.3) (2024-06-07)
+
+
+### Features
+
+* add `waitForSelector` context helper + `parseWithCheerio` in adaptive crawler ([#2522](https://github.com/apify/crawlee/issues/2522)) ([6f88e73](https://github.com/apify/crawlee/commit/6f88e738d43ab4774dc4ef3f78775a5d88728e0d))
+
+
+
+
+
+## [3.10.2](https://github.com/apify/crawlee/compare/v3.10.1...v3.10.2) (2024-06-03)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.10.1](https://github.com/apify/crawlee/compare/v3.10.0...v3.10.1) (2024-05-23)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.10.0](https://github.com/apify/crawlee/compare/v3.9.2...v3.10.0) (2024-05-16)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.9.2](https://github.com/apify/crawlee/compare/v3.9.1...v3.9.2) (2024-04-17)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.9.1](https://github.com/apify/crawlee/compare/v3.9.0...v3.9.1) (2024-04-11)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.9.0](https://github.com/apify/crawlee/compare/v3.8.2...v3.9.0) (2024-04-10)
+
+
+### Bug Fixes
+
+* **puppeteer:** allow passing `networkidle` to `waitUntil` in `gotoExtended` ([#2399](https://github.com/apify/crawlee/issues/2399)) ([5d0030d](https://github.com/apify/crawlee/commit/5d0030d24858585715b0fac5568440f2b2346706)), closes [#2398](https://github.com/apify/crawlee/issues/2398)
+
+
+### Features
+
+* expand #shadow-root elements automatically in `parseWithCheerio` helper ([#2396](https://github.com/apify/crawlee/issues/2396)) ([a05b3a9](https://github.com/apify/crawlee/commit/a05b3a93a9b57926b353df0e79d846b5024c42ac))
+
+
+
+
+
+## [3.8.2](https://github.com/apify/crawlee/compare/v3.8.1...v3.8.2) (2024-03-21)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.8.1](https://github.com/apify/crawlee/compare/v3.8.0...v3.8.1) (2024-02-22)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.8.0](https://github.com/apify/crawlee/compare/v3.7.3...v3.8.0) (2024-02-21)
+
+
+### Bug Fixes
+
+* **puppeteer:** replace `page.waitForTimeout()` with `sleep()` ([52d7219](https://github.com/apify/crawlee/commit/52d7219acdc19b34a727e5d26f7f9288d27ca57f)), closes [#2335](https://github.com/apify/crawlee/issues/2335)
+
+
+
+
+
+## [3.7.3](https://github.com/apify/crawlee/compare/v3.7.2...v3.7.3) (2024-01-30)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.7.2](https://github.com/apify/crawlee/compare/v3.7.1...v3.7.2) (2024-01-09)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.7.1](https://github.com/apify/crawlee/compare/v3.7.0...v3.7.1) (2024-01-02)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.7.0](https://github.com/apify/crawlee/compare/v3.6.2...v3.7.0) (2023-12-21)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.6.2](https://github.com/apify/crawlee/compare/v3.6.1...v3.6.2) (2023-11-26)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.6.1](https://github.com/apify/crawlee/compare/v3.6.0...v3.6.1) (2023-11-15)
+
+
+### Features
+
+* **puppeteer:** enable `new` headless mode ([#1910](https://github.com/apify/crawlee/issues/1910)) ([7fc999c](https://github.com/apify/crawlee/commit/7fc999cf4658ca69b97f16d434444081998470f4))
+
+
+
+
+
+# [3.6.0](https://github.com/apify/crawlee/compare/v3.5.8...v3.6.0) (2023-11-15)
+
+
+### Bug Fixes
+
+* add `skipNavigation` option to `enqueueLinks` ([#2153](https://github.com/apify/crawlee/issues/2153)) ([118515d](https://github.com/apify/crawlee/commit/118515d2ba534b99be2f23436f6abe41d66a8e07))
+
+
+
+
+
+## [3.5.8](https://github.com/apify/crawlee/compare/v3.5.7...v3.5.8) (2023-10-17)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.5.7](https://github.com/apify/crawlee/compare/v3.5.6...v3.5.7) (2023-10-05)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.5.6](https://github.com/apify/crawlee/compare/v3.5.5...v3.5.6) (2023-10-04)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.5.5](https://github.com/apify/crawlee/compare/v3.5.4...v3.5.5) (2023-10-02)
+
+
+### Bug Fixes
+
+* allow to use any version of puppeteer or playwright ([#2102](https://github.com/apify/crawlee/issues/2102)) ([0cafceb](https://github.com/apify/crawlee/commit/0cafceb2966d430dd1b2a1b619fe66da1c951f4c)), closes [#2101](https://github.com/apify/crawlee/issues/2101)
+
+
+### Features
+
+* Request Queue v2 ([#1975](https://github.com/apify/crawlee/issues/1975)) ([70a77ee](https://github.com/apify/crawlee/commit/70a77ee15f984e9ae67cd584fc58ace7e55346db)), closes [#1365](https://github.com/apify/crawlee/issues/1365)
+
+
+
+
+
+## [3.5.4](https://github.com/apify/crawlee/compare/v3.5.3...v3.5.4) (2023-09-11)
+
+
+### Bug Fixes
+
+* various helpers opening KVS now respect Configuration ([#2071](https://github.com/apify/crawlee/issues/2071)) ([59dbb16](https://github.com/apify/crawlee/commit/59dbb164699774e5a6718e98d0a4e8f630f35323))
+
+
+
+
+
+## [3.5.3](https://github.com/apify/crawlee/compare/v3.5.2...v3.5.3) (2023-08-31)
+
+
+### Bug Fixes
+
+* pin all internal dependencies ([#2041](https://github.com/apify/crawlee/issues/2041)) ([d6f2b17](https://github.com/apify/crawlee/commit/d6f2b172d4a6776137c7893ca798d5b4a9408e79)), closes [#2040](https://github.com/apify/crawlee/issues/2040)
+
+
+
+
+
+## [3.5.2](https://github.com/apify/crawlee/compare/v3.5.1...v3.5.2) (2023-08-21)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.5.1](https://github.com/apify/crawlee/compare/v3.5.0...v3.5.1) (2023-08-16)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.5.0](https://github.com/apify/crawlee/compare/v3.4.2...v3.5.0) (2023-07-31)
+
+
+### Features
+
+* add `closeCookieModals` context helper for Playwright and Puppeteer ([#1927](https://github.com/apify/crawlee/issues/1927)) ([98d93bb](https://github.com/apify/crawlee/commit/98d93bb6713ec219baa83db2ad2cd1d7621a3339))
+* **core:** use `RequestQueue.addBatchedRequests()` in `enqueueLinks` helper ([4d61ca9](https://github.com/apify/crawlee/commit/4d61ca934072f8bbb680c842d8b1c9a4452ee73a)), closes [#1995](https://github.com/apify/crawlee/issues/1995)
+
+
+
+
+
+## [3.4.2](https://github.com/apify/crawlee/compare/v3.4.1...v3.4.2) (2023-07-19)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.4.1](https://github.com/apify/crawlee/compare/v3.4.0...v3.4.1) (2023-07-13)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.4.0](https://github.com/apify/crawlee/compare/v3.3.3...v3.4.0) (2023-06-12)
+
+
+### Features
+
+* infiniteScroll has maxScrollHeight limit ([#1945](https://github.com/apify/crawlee/issues/1945)) ([44997bb](https://github.com/apify/crawlee/commit/44997bba5bbf33ddb7dbac2f3e26d4bee60d4f47))
+
+
+
+
+
+## [3.3.3](https://github.com/apify/crawlee/compare/v3.3.2...v3.3.3) (2023-05-31)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.3.2](https://github.com/apify/crawlee/compare/v3.3.1...v3.3.2) (2023-05-11)
+
+
+### Features
+
+* **router:** allow inline router definition ([#1877](https://github.com/apify/crawlee/issues/1877)) ([2d241c9](https://github.com/apify/crawlee/commit/2d241c9f88964ebd41a181069c378b6b7b5bf262))
+
+
+
+
+
+## [3.3.1](https://github.com/apify/crawlee/compare/v3.3.0...v3.3.1) (2023-04-11)
+
+
+### Bug Fixes
+
+* **jsdom:** delay closing of the window and add some polyfills ([2e81618](https://github.com/apify/crawlee/commit/2e81618afb5f3890495e3e5fcfa037eb3319edc9))
+
+
+
+
+
+# [3.3.0](https://github.com/apify/crawlee/compare/v3.2.2...v3.3.0) (2023-03-09)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.2.2](https://github.com/apify/crawlee/compare/v3.2.1...v3.2.2) (2023-02-08)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.2.1](https://github.com/apify/crawlee/compare/v3.2.0...v3.2.1) (2023-02-07)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# [3.2.0](https://github.com/apify/crawlee/compare/v3.1.4...v3.2.0) (2023-02-07)
+
+
+### Bug Fixes
+
+* allow `userData` option in `enqueueLinksByClickingElements` ([#1749](https://github.com/apify/crawlee/issues/1749)) ([736f85d](https://github.com/apify/crawlee/commit/736f85d4a3b99a06d0f99f91e33e71976a9458a3)), closes [#1617](https://github.com/apify/crawlee/issues/1617)
+* declare missing dependency on `tslib` ([27e96c8](https://github.com/apify/crawlee/commit/27e96c80c26e7fc31809a4b518d699573cb8c662)), closes [#1747](https://github.com/apify/crawlee/issues/1747)
+
+
+### Features
+
+* add `forefront` option to all `enqueueLinks` variants ([#1760](https://github.com/apify/crawlee/issues/1760)) ([a01459d](https://github.com/apify/crawlee/commit/a01459dffb51162e676354f0aa4811a1d36affa9)), closes [#1483](https://github.com/apify/crawlee/issues/1483)
+
+
+
+
+
+## [3.1.4](https://github.com/apify/crawlee/compare/v3.1.3...v3.1.4) (2022-12-14)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.1.3](https://github.com/apify/crawlee/compare/v3.1.2...v3.1.3) (2022-12-07)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## 3.1.2 (2022-11-15)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## 3.1.1 (2022-11-07)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+# 3.1.0 (2022-10-13)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
+
+
+## [3.0.4](https://github.com/apify/crawlee/compare/v3.0.3...v3.0.4) (2022-08-22)
+
+**Note:** Version bump only for package @crawlee/puppeteer
+
+
+
